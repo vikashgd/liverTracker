@@ -1,0 +1,271 @@
+/**
+ * LiverTracker Medical Design System
+ * Healthcare-focused design tokens and variables
+ * WCAG 2.1 AA compliant color palette
+ */
+
+:root {
+  /* === MEDICAL COLOR PALETTE === */
+  
+  /* Primary - Medical Blue (Trust, Reliability) */
+  --medical-primary-50: #eff6ff;
+  --medical-primary-100: #dbeafe;
+  --medical-primary-200: #bfdbfe;
+  --medical-primary-300: #93c5fd;
+  --medical-primary-400: #60a5fa;
+  --medical-primary-500: #3b82f6;
+  --medical-primary-600: #2563eb;
+  --medical-primary-700: #1d4ed8;
+  --medical-primary-800: #1e40af;
+  --medical-primary-900: #1e3a8a;
+  --medical-primary-950: #172554;
+
+  /* Success - Clinical Green (Normal/Healthy) */
+  --medical-success-50: #f0fdf4;
+  --medical-success-100: #dcfce7;
+  --medical-success-200: #bbf7d0;
+  --medical-success-300: #86efac;
+  --medical-success-400: #4ade80;
+  --medical-success-500: #22c55e;
+  --medical-success-600: #16a34a;
+  --medical-success-700: #15803d;
+  --medical-success-800: #166534;
+  --medical-success-900: #14532d;
+
+  /* Warning - Medical Orange (Attention/Caution) */
+  --medical-warning-50: #fffbeb;
+  --medical-warning-100: #fef3c7;
+  --medical-warning-200: #fde68a;
+  --medical-warning-300: #fcd34d;
+  --medical-warning-400: #fbbf24;
+  --medical-warning-500: #f59e0b;
+  --medical-warning-600: #d97706;
+  --medical-warning-700: #b45309;
+  --medical-warning-800: #92400e;
+  --medical-warning-900: #78350f;
+
+  /* Error - Clinical Red (Critical/Abnormal) */
+  --medical-error-50: #fef2f2;
+  --medical-error-100: #fee2e2;
+  --medical-error-200: #fecaca;
+  --medical-error-300: #fca5a5;
+  --medical-error-400: #f87171;
+  --medical-error-500: #ef4444;
+  --medical-error-600: #dc2626;
+  --medical-error-700: #b91c1c;
+  --medical-error-800: #991b1b;
+  --medical-error-900: #7f1d1d;
+
+  /* Neutral - Medical Gray (Clinical Clean) */
+  --medical-neutral-50: #f8fafc;
+  --medical-neutral-100: #f1f5f9;
+  --medical-neutral-200: #e2e8f0;
+  --medical-neutral-300: #cbd5e1;
+  --medical-neutral-400: #94a3b8;
+  --medical-neutral-500: #64748b;
+  --medical-neutral-600: #475569;
+  --medical-neutral-700: #334155;
+  --medical-neutral-800: #1e293b;
+  --medical-neutral-900: #0f172a;
+
+  /* === MEDICAL SEMANTIC COLORS === */
+  
+  /* Lab Value Ranges */
+  --lab-normal: var(--medical-success-500);
+  --lab-normal-bg: var(--medical-success-50);
+  --lab-abnormal: var(--medical-error-500);
+  --lab-abnormal-bg: var(--medical-error-50);
+  --lab-borderline: var(--medical-warning-500);
+  --lab-borderline-bg: var(--medical-warning-50);
+
+  /* Data Confidence Levels */
+  --confidence-high: var(--medical-success-600);
+  --confidence-medium: var(--medical-warning-500);
+  --confidence-low: var(--medical-error-500);
+
+  /* Chart Colors (Medical Safe) */
+  --chart-alt: #8b5cf6;      /* Purple - ALT */
+  --chart-ast: #06b6d4;      /* Cyan - AST */
+  --chart-platelets: #ec4899; /* Pink - Platelets */
+  --chart-bilirubin: #f59e0b; /* Amber - Bilirubin */
+  --chart-albumin: #10b981;   /* Emerald - Albumin */
+
+  /* === TYPOGRAPHY SCALE === */
+  
+  /* Medical Typography - Clear, Readable */
+  --font-family-primary: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family-mono: 'SF Mono', Consolas, 'Liberation Mono', monospace;
+
+  /* Font Sizes - Medical Optimized */
+  --text-xs: 0.75rem;      /* 12px - Small labels */
+  --text-sm: 0.875rem;     /* 14px - Body text */
+  --text-base: 1rem;       /* 16px - Default */
+  --text-lg: 1.125rem;     /* 18px - Emphasis */
+  --text-xl: 1.25rem;      /* 20px - Section headers */
+  --text-2xl: 1.5rem;      /* 24px - Page headers */
+  --text-3xl: 1.875rem;    /* 30px - Main titles */
+  --text-4xl: 2.25rem;     /* 36px - Hero text */
+
+  /* Font Weights - Medical Hierarchy */
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* === SPACING SCALE === */
+  
+  /* Medical Spacing - Touch-Friendly */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+
+  /* === BORDER RADIUS === */
+  
+  --radius-sm: 0.25rem;  /* 4px - Small elements */
+  --radius-md: 0.375rem; /* 6px - Standard */
+  --radius-lg: 0.5rem;   /* 8px - Cards */
+  --radius-xl: 0.75rem;  /* 12px - Large cards */
+  --radius-2xl: 1rem;    /* 16px - Modals */
+
+  /* === SHADOWS === */
+  
+  /* Medical Shadows - Subtle, Clean */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* === TRANSITIONS === */
+  
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* === BREAKPOINTS === */
+  
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+/* === MEDICAL COMPONENT PATTERNS === */
+
+/* Medical Card Pattern */
+.medical-card {
+  background: white;
+  border: 1px solid var(--medical-neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+}
+
+.medical-card:hover {
+  border-color: var(--medical-primary-300);
+  box-shadow: var(--shadow-md);
+}
+
+/* Medical Metric Display */
+.medical-metric {
+  font-family: var(--font-family-mono);
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.025em;
+}
+
+/* Medical Status Indicators */
+.status-normal {
+  color: var(--lab-normal);
+  background-color: var(--lab-normal-bg);
+}
+
+.status-abnormal {
+  color: var(--lab-abnormal);
+  background-color: var(--lab-abnormal-bg);
+}
+
+.status-borderline {
+  color: var(--lab-borderline);
+  background-color: var(--lab-borderline-bg);
+}
+
+/* Medical Typography */
+.medical-heading {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-semibold);
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: var(--medical-neutral-900);
+}
+
+.medical-body {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-normal);
+  line-height: 1.5;
+  color: var(--medical-neutral-700);
+}
+
+.medical-caption {
+  font-family: var(--font-family-primary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--medical-neutral-500);
+}
+
+/* Medical Focus States (Accessibility) */
+.medical-focus {
+  outline: 2px solid var(--medical-primary-500);
+  outline-offset: 2px;
+}
+
+/* Medical Interactive States */
+.medical-interactive {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.medical-interactive:hover {
+  transform: translateY(-1px);
+}
+
+.medical-interactive:active {
+  transform: translateY(0);
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --medical-primary-500: #0066cc;
+    --medical-success-500: #008800;
+    --medical-error-500: #cc0000;
+    --medical-warning-500: #cc6600;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark Mode Support (for accessibility) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --medical-neutral-50: #0f172a;
+    --medical-neutral-100: #1e293b;
+    --medical-neutral-200: #334155;
+    --medical-neutral-900: #f8fafc;
+  }
+}
