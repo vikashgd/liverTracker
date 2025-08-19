@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { calculateMELD, MELDParameters, MELDResult, extractMELDParameters } from '@/lib/meld-calculator';
 import { CanonicalMetric } from '@/lib/metrics';
+import { MELDParameterForm } from './meld-parameter-form';
+import { PatientProfile } from '@/lib/ai-health-intelligence';
 
 interface MELDIntelligenceProps {
   charts: Array<{
@@ -10,28 +12,27 @@ interface MELDIntelligenceProps {
     data: Array<{ date: string; value: number | null; reportCount?: number }>;
     unit: string;
   }>;
-  patientProfile?: {
-    gender?: 'male' | 'female';
-    dialysis?: {
-      onDialysis: boolean;
-      sessionsPerWeek: number;
-      lastSession?: string;
-    };
-  };
+  patientProfile?: PatientProfile;
+  onProfileUpdate?: (profile: PatientProfile) => void;
 }
 
-export function MELDIntelligence({ charts, patientProfile }: MELDIntelligenceProps) {
+export function MELDIntelligence({ charts, patientProfile, onProfileUpdate }: MELDIntelligenceProps) {
   const [meldResult, setMeldResult] = useState<MELDResult | null>(null);
   const [meldHistory, setMeldHistory] = useState<Array<{ date: string; meld: number; meldNa?: number; meld3?: number }>>([]);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    calculateCurrentMELD();
-    calculateMELDHistory();
-  }, [charts, patientProfile]);
+  }, []);
 
-  const calculateCurrentMELD = () => {
+  useEffect(() => {
+    if (isClient) {
+      calculateCurrentMELD();
+      calculateMELDHistory();
+    }
+  }, [isClient, calculateCurrentMELD, calculateMELDHistory]);
+
+  const calculateCurrentMELD = useCallback(() => {
     // Get latest values for MELD calculation
     const getLatestValue = (metric: CanonicalMetric) => {
       const chart = charts.find(c => c.title === metric);
@@ -63,9 +64,9 @@ export function MELDIntelligence({ charts, patientProfile }: MELDIntelligencePro
 
     const result = calculateMELD(meldParams);
     setMeldResult(result);
-  };
+  }, [charts, patientProfile]);
 
-  const calculateMELDHistory = () => {
+  const calculateMELDHistory = useCallback(() => {
     // Calculate MELD scores for all time points where we have complete data
     const allDates = new Set<string>();
     charts.forEach(chart => {
@@ -110,7 +111,7 @@ export function MELDIntelligence({ charts, patientProfile }: MELDIntelligencePro
     });
 
     setMeldHistory(history);
-  };
+  }, [charts, patientProfile]);
 
   const getMELDTrend = () => {
     if (meldHistory.length < 2) return null;
@@ -176,6 +177,15 @@ export function MELDIntelligence({ charts, patientProfile }: MELDIntelligencePro
 
   return (
     <div className="space-y-6">
+      {/* MELD Parameter Collection */}
+      {onProfileUpdate && (
+        <MELDParameterForm
+          currentProfile={patientProfile}
+          onProfileUpdate={onProfileUpdate}
+          missingParameters={meldResult?.missingParameters || []}
+        />
+      )}
+
       {/* Main MELD Score Display */}
       <div className={`rounded-lg border p-6 ${getScoreBackground(primaryScore)}`}>
         <div className="flex items-center justify-between mb-4">

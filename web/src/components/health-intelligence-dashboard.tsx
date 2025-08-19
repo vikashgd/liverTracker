@@ -24,6 +24,7 @@ export function HealthIntelligenceDashboard({ charts, patientProfile = {} }: Hea
   const [insights, setInsights] = useState<HealthInsight[]>([]);
   const [isClient, setIsClient] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'alerts' | 'insights' | 'trends' | 'meld' | 'imaging'>('overview');
+  const [currentProfile, setCurrentProfile] = useState<PatientProfile>(patientProfile);
 
   useEffect(() => {
     setIsClient(true);
@@ -38,13 +39,13 @@ export function HealthIntelligenceDashboard({ charts, patientProfile = {} }: Hea
     }));
 
     // Initialize AI engine
-    const engine = new HealthIntelligenceEngine(healthMetrics, patientProfile);
+    const engine = new HealthIntelligenceEngine(healthMetrics, currentProfile);
 
     // Generate insights
     setHealthScore(engine.calculateHealthScore());
     setAlerts(engine.generateAlerts());
     setInsights(engine.generateInsights());
-  }, [charts, patientProfile]);
+  }, [charts, currentProfile]);
 
   if (!isClient) {
     return (
@@ -224,7 +225,11 @@ export function HealthIntelligenceDashboard({ charts, patientProfile = {} }: Hea
       )}
 
       {activeTab === 'meld' && (
-        <MELDIntelligence charts={charts} patientProfile={patientProfile} />
+        <MELDIntelligence 
+          charts={charts} 
+          patientProfile={currentProfile} 
+          onProfileUpdate={setCurrentProfile}
+        />
       )}
 
       {activeTab === 'imaging' && (

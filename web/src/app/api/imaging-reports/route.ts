@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     console.log(`📊 Loading imaging reports for user: ${userId}`);
 
     // Fetch reports that contain imaging data
-    const reports = await prisma.report.findMany({
+    const reports = await prisma.reportFile.findMany({
       where: {
         userId,
         OR: [
@@ -24,15 +24,12 @@ export async function GET(req: NextRequest) {
           { reportType: { equals: 'MRI' } },
           {
             // Also include reports that have imaging data in extracted content
-            extractedData: {
+            extractedJson: {
               path: ['imaging'],
-              not: null
+              not: {}
             }
           }
         ]
-      },
-      include: {
-        extractedData: true
       },
       orderBy: {
         reportDate: 'desc'
@@ -43,8 +40,8 @@ export async function GET(req: NextRequest) {
 
     // Transform reports to the expected format
     const imagingReports = reports.map(report => {
-      // Parse extracted data if it's a string
-      let extractedData = report.extractedData;
+      // Parse extracted data from JSON field
+      let extractedData = report.extractedJson;
       if (typeof extractedData === 'string') {
         try {
           extractedData = JSON.parse(extractedData);
