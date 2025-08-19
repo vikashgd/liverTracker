@@ -63,10 +63,10 @@ export class MedicalDataPlatform {
       const normalizedData = await this.normalizer.normalize(extractedData);
       
       // Step 3: Validate medical values
-      const validatedData = await this.validator.validate(normalizedData);
+      const validatedData = await this.validator.validateBatch(normalizedData);
       
       // Step 4: Create medical report
-      const report = await this.engine.createReport(validatedData);
+      const report = await this.engine.createReport(normalizedData);
       
       // Step 5: Store in repository
       await this.repository.saveReport(report);
@@ -306,7 +306,7 @@ export class MedicalDataPlatform {
       }
     });
     
-    return confidenceScores.reduce((sum, score) => sum + score, 0) / confidenceScores.length;
+    return confidenceScores.reduce((sum: number, score: number) => sum + score, 0) / confidenceScores.length;
   }
 }
 

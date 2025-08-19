@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUserId } from "@/lib/auth";
-import { SmartReportManager } from "@/lib/smart-report-manager";
+import { getMedicalPlatform } from "@/lib/medical-platform";
 import { z } from "zod";
 
 const Body = z.object({
@@ -59,67 +59,142 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const data = Body.parse(await req.json());
-
-  const safeDate = (() => {
-    const s = data.reportDate ?? data.extracted?.reportDate ?? null;
-    if (!s) return undefined;
-    const d = new Date(s);
-    return isNaN(d.getTime()) ? undefined : d;
-  })();
-
-  // Check for duplicates if we have a date and metrics
-  if (safeDate && (data.extracted?.metrics || data.extracted?.metricsAll)) {
-    const reportData = {
-      reportType: data.reportType ?? data.extracted?.reportType ?? "Unknown",
-      reportDate: safeDate,
-      metrics: [
-        ...(data.extracted?.metrics ? Object.entries(data.extracted.metrics)
-          .filter(([, v]) => v !== null && (v as any).value !== null)
-          .map(([name, v]) => ({
-            name,
-            value: (v as any).value as number,
-            unit: (v as any).unit,
-            category: "extracted"
-          })) : []),
-        ...(data.extracted?.metricsAll || []).filter(m => m.value !== null)
-      ].filter(m => m.value !== null) as Array<{
-        name: string;
-        value: number;
-        unit?: string | null;
-        category?: string;
-      }>
-    };
-
-    if (reportData.metrics.length > 0) {
-      const duplicateResult = await SmartReportManager.detectDuplicates(userId, reportData);
-      
-      if (duplicateResult.isDuplicate && duplicateResult.action === 'update_existing') {
-        // Auto-merge without conflicts
-        const mergeResult = await SmartReportManager.mergeReports(
-          userId,
-          reportData,
-          duplicateResult.existingReportId!,
-          { onDuplicate: 'keep_best_confidence', toleranceHours: 12, confidenceThreshold: 0.7 }
-        );
-        
-        return NextResponse.json({ 
-          id: mergeResult.mergedReportId,
-          merged: true,
-          summary: mergeResult.summary,
-          duplicateInfo: duplicateResult
-        });
-      } else if (duplicateResult.isDuplicate && duplicateResult.action === 'user_decision_required') {
-        // Return duplicate info for user decision
-        return NextResponse.json({
-          needsUserDecision: true,
-          duplicateInfo: duplicateResult,
-          reportData
-        }, { status: 409 }); // Conflict status
+  try {
+    const data = Body.parse(await req.json());
+    
+    // Initialize the medical platform
+    const platform = getMedicalPlatform({
+      processing: {
+        strictMode: false,
+        autoCorrection: true,
+        confidenceThreshold: 0.7,
+        validationLevel: 'normal'
+      },
+      quality: {
+        minimumConfidence: 0.5,
+        requiredFields: ['ALT', 'AST', 'Platelets'],
+        outlierDetection: true,
+        duplicateHandling: 'merge'
+      },
+      regional: {
+        primaryUnits: 'International',
+        timeZone: 'UTC',
+        locale: 'en-US'
+      },
+      compliance: {
+        auditLevel: 'detailed',
+        dataRetention: 2555,
+        encryptionRequired: true
       }
-    }
-  }
+    });
 
+    const safeDate = (() => {
+      const s = data.reportDate ?? data.extracted?.reportDate ?? null;
+      if (!s) return new Date(); // Default to current date
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? new Date() : d;
+    })();
+
+    console.log(`📊 Processing report for user ${userId} with date ${safeDate.toISOString()}`);
+
+    // Process through the medical platform if we have extracted data
+    if (data.extracted && (data.extracted.metrics || data.extracted.metricsAll)) {
+      console.log('🔬 Processing through Medical Platform...');
+      
+      const processingResult = await platform.processAIExtraction(
+        userId,
+        data.extracted,
+        safeDate,
+        data.objectKey
+      );
+
+      if (processingResult.success) {
+        console.log(`✅ Medical Platform processed ${processingResult.summary.valuesProcessed} values with quality score ${processingResult.summary.qualityScore.toFixed(2)}`);
+        
+        // Create timeline event for platform processing
+        await prisma.timelineEvent.create({
+          data: {
+            userId: userId,
+            type: "report_processed",
+            reportId: processingResult.report.id,
+            details: {
+              platform: 'medical_platform_v1',
+              summary: {
+                valuesProcessed: processingResult.summary.valuesProcessed,
+                valuesValid: processingResult.summary.valuesValid,
+                averageConfidence: processingResult.summary.averageConfidence,
+                processingTime: processingResult.summary.processingTime,
+                qualityScore: processingResult.summary.qualityScore
+              },
+              qualityScore: processingResult.summary.qualityScore,
+              originalExtracted: data.extracted
+            } as any,
+          },
+        });
+
+        return NextResponse.json({ 
+          id: processingResult.report.id,
+          processed: true,
+          platform: 'medical_platform_v1',
+          summary: processingResult.summary,
+          warnings: processingResult.warnings,
+          quality: processingResult.report.quality
+        });
+      } else {
+        console.warn('⚠️ Medical Platform processing failed, falling back to legacy system');
+        console.warn('Errors:', processingResult.errors);
+        
+        // Fall back to legacy processing if platform fails
+        return await processLegacyReport(data, userId, safeDate);
+      }
+    } else {
+      // No extracted data - create basic report
+      console.log('📄 Creating basic report without extracted data');
+      
+      const report = await prisma.reportFile.create({
+        data: {
+          userId: userId,
+          objectKey: data.objectKey,
+          contentType: data.contentType,
+          reportType: data.reportType ?? "Document",
+          reportDate: safeDate,
+          extractedJson: data.extracted ?? undefined,
+        },
+      });
+
+      // Create timeline event
+      await prisma.timelineEvent.create({
+        data: {
+          userId: userId,
+          type: "report_saved",
+          reportId: report.id,
+          details: data.extracted ?? undefined,
+        },
+      });
+
+      return NextResponse.json({ id: report.id, processed: false });
+    }
+
+  } catch (error) {
+    console.error('❌ Report processing error:', error);
+    
+    return NextResponse.json(
+      { 
+        error: "Report processing failed", 
+        details: error instanceof Error ? error.message : String(error),
+        fallback: "Please try again or contact support"
+      }, 
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Legacy report processing for backward compatibility
+ */
+async function processLegacyReport(data: any, userId: string, safeDate: Date) {
+  console.log('🔄 Using legacy report processing...');
+  
   const report = await prisma.reportFile.create({
     data: {
       userId: userId,
@@ -131,6 +206,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Legacy metric processing
   if (data.extracted?.metrics) {
     const metricsRows = Object.entries(data.extracted.metrics)
       .filter(([, v]) => v !== null)
@@ -149,7 +225,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (data.extracted?.metricsAll && data.extracted.metricsAll.length > 0) {
-    const rows = data.extracted.metricsAll.map((m) => ({
+    const rows = data.extracted.metricsAll.map((m: any) => ({
       reportId: report.id,
       name: m.name,
       value: m.value ?? undefined,
@@ -159,20 +235,11 @@ export async function POST(req: NextRequest) {
     await prisma.extractedMetric.createMany({ data: rows });
   }
 
-  // Create a timeline event for report saved
-  await prisma.timelineEvent.create({
-    data: {
-      userId: userId,
-      type: "report_saved",
-      reportId: report.id,
-      details: data.extracted ?? undefined,
-    },
-  });
-
+  // Legacy imaging processing
   if (data.extracted?.imaging) {
     const organs = data.extracted.imaging.organs ?? [];
     if (organs.length > 0) {
-      const rows = organs.map((o) => ({
+      const rows = organs.map((o: any) => ({
         reportId: report.id,
         name: o.name,
         value: o.size?.value ?? undefined,
@@ -184,7 +251,7 @@ export async function POST(req: NextRequest) {
     }
     const findings = data.extracted.imaging.findings ?? [];
     if (findings.length > 0) {
-      const rows = findings.map((f) => ({
+      const rows = findings.map((f: any) => ({
         reportId: report.id,
         name: "finding",
         textValue: f,
@@ -194,7 +261,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ id: report.id });
+  // Create timeline event
+  await prisma.timelineEvent.create({
+    data: {
+      userId: userId,
+      type: "report_saved",
+      reportId: report.id,
+      details: {
+        ...data.extracted,
+        processing: 'legacy_fallback'
+      },
+    },
+  });
+
+  return NextResponse.json({ 
+    id: report.id, 
+    processed: true,
+    platform: 'legacy_fallback',
+    note: 'Processed using legacy system due to platform error'
+  });
 }
 
 export async function GET() {

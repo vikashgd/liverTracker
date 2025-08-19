@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
 export type SeriesPoint = { date: string; value: number | null; reportCount?: number };
@@ -22,6 +22,11 @@ export function ReportDotsChart({
   range,
   lastUpdated,
 }: ReportDotsChartProps) {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   const [selectedPoint, setSelectedPoint] = useState<SeriesPoint | null>(null);
   
   if (!data || data.length === 0) {
@@ -172,10 +177,16 @@ export function ReportDotsChart({
 
         {/* X-axis (dates) */}
         <div className="absolute bottom-0 left-8 right-4 flex justify-between text-xs text-medical-neutral-400">
-          {validData.length > 1 && (
+          {validData.length > 1 && isClient && (
             <>
               <span>{new Date(validData[0].date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}</span>
               <span>{new Date(validData[validData.length - 1].date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}</span>
+            </>
+          )}
+          {!isClient && validData.length > 1 && (
+            <>
+              <span>Start</span>
+              <span>End</span>
             </>
           )}
         </div>
@@ -192,12 +203,15 @@ export function ReportDotsChart({
                   {selectedPoint.value} <span className="font-normal text-sm">{unit}</span>
                 </div>
                 <div className="text-sm opacity-75">
-                  {new Date(selectedPoint.date).toLocaleDateString('en-US', {
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  })}
+                  {isClient 
+                    ? new Date(selectedPoint.date).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })
+                    : 'Date loading...'
+                  }
                 </div>
               </div>
             </div>

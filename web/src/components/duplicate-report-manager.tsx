@@ -90,7 +90,11 @@ export function DuplicateReportManager({ userId }: DuplicateReportManagerProps) 
       {duplicates.map((duplicate, index) => (
         <Card key={index} className="space-y-4">
           <div className="flex items-center justify-between border-b pb-4">
-            <h3 className="text-lg font-semibold">📅 {new Date(duplicate.date).toLocaleDateString()}</h3>
+            <h3 className="text-lg font-semibold">📅 {typeof window !== 'undefined' ? new Date(duplicate.date).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            }) : 'Loading date...'}</h3>
             <span className="text-sm text-medical-neutral-500">
               {duplicate.metrics.length} metrics with duplicates
             </span>
