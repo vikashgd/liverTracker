@@ -6,6 +6,7 @@ import { CanonicalMetric } from '@/lib/metrics';
 import { SmartAlertSystem, CompactAlertBanner } from './smart-alert-system';
 import { MELDIntelligence } from './meld-intelligence';
 import { ImagingDashboard } from './imaging-dashboard';
+import DiseaseProgressionAnalysis from './disease-progression-analysis';
 
 interface HealthIntelligenceDashboardProps {
   charts: Array<{
@@ -23,7 +24,7 @@ export function HealthIntelligenceDashboard({ charts, patientProfile = {} }: Hea
   const [alerts, setAlerts] = useState<HealthAlert[]>([]);
   const [insights, setInsights] = useState<HealthInsight[]>([]);
   const [isClient, setIsClient] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'alerts' | 'insights' | 'trends' | 'meld' | 'imaging'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'alerts' | 'insights' | 'trends' | 'meld' | 'imaging' | 'progression'>('overview');
   const [currentProfile, setCurrentProfile] = useState<PatientProfile>(patientProfile);
 
   useEffect(() => {
@@ -123,6 +124,7 @@ export function HealthIntelligenceDashboard({ charts, patientProfile = {} }: Hea
         <nav className="flex space-x-8">
           {[
             { id: 'overview', name: 'Overview', icon: '📊' },
+            { id: 'progression', name: 'Disease Journey', icon: '🚶‍♂️' },
             { id: 'meld', name: 'MELD Score', icon: '🏥' },
             { id: 'imaging', name: 'Imaging', icon: '🔬' },
             { id: 'alerts', name: 'Alerts', icon: '🚨', count: alerts.length },
@@ -222,6 +224,26 @@ export function HealthIntelligenceDashboard({ charts, patientProfile = {} }: Hea
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === 'progression' && (
+        <DiseaseProgressionAnalysis 
+          data={{
+            reportFiles: [], // Will be populated when we integrate with actual data
+            extractedMetrics: charts.flatMap(chart => 
+              chart.data
+                .filter(d => d.value !== null)
+                .map(d => ({
+                  metricType: chart.title,
+                  numericValue: d.value?.toString(),
+                  textValue: JSON.stringify({ confidence: 'high' }),
+                  createdAt: d.date,
+                  unit: chart.unit
+                }))
+            ),
+            imagingReports: [] // Will be populated when we integrate with actual imaging data
+          }}
+        />
       )}
 
       {activeTab === 'meld' && (

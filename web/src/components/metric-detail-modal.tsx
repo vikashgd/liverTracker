@@ -63,23 +63,23 @@ export default function MetricDetailModal({ chart, isOpen, onClose }: MetricDeta
   const filteredData = getFilteredData();
 
   // Calculate statistics
-  const values = filteredData.map(d => d.value);
+  const values = filteredData.map(d => d.value).filter((v): v is number => v !== null);
   const stats = {
     min: Math.min(...values),
     max: Math.max(...values),
     avg: values.reduce((sum, val) => sum + val, 0) / values.length,
     count: filteredData.length,
     trend: calculateTrend(filteredData),
-    outOfRange: filteredData.filter(d => d.value < chart.range.low || d.value > chart.range.high).length
+    outOfRange: filteredData.filter(d => d.value !== null && (d.value < chart.range.low || d.value > chart.range.high)).length
   };
 
   function calculateTrend(data: SeriesPoint[]) {
     if (data.length < 2) return 'insufficient_data';
     
-    const recent = data.slice(-3).map(d => d.value);
-    const older = data.slice(-6, -3).map(d => d.value);
+    const recent = data.slice(-3).map(d => d.value).filter((v): v is number => v !== null);
+    const older = data.slice(-6, -3).map(d => d.value).filter((v): v is number => v !== null);
     
-    if (older.length === 0) return 'stable';
+    if (older.length === 0 || recent.length === 0) return 'stable';
     
     const recentAvg = recent.reduce((sum, val) => sum + val, 0) / recent.length;
     const olderAvg = older.reduce((sum, val) => sum + val, 0) / older.length;
@@ -141,7 +141,7 @@ export default function MetricDetailModal({ chart, isOpen, onClose }: MetricDeta
               <div className="bg-blue-50 rounded-lg p-4">
                 <div className="text-sm text-blue-600 font-medium">Latest Value</div>
                 <div className="text-2xl font-bold text-blue-900">
-                  {latestData?.value.toFixed(2)} {chart.unit}
+                  {latestData?.value?.toFixed(2) || 'N/A'} {chart.unit}
                 </div>
                 <div className="text-xs text-blue-600 mt-1">
                   {latestData && isClient && new Date(latestData.date).toLocaleDateString('en-US', { 
@@ -238,19 +238,20 @@ export default function MetricDetailModal({ chart, isOpen, onClose }: MetricDeta
               {/* Mobile Card Layout */}
               <div className="md:hidden p-4 space-y-3 max-h-64 overflow-y-auto">
                 {filteredData.slice().reverse().slice(0, 5).map((point, index) => {
-                  const isHigh = point.value > chart.range.high;
-                  const isLow = point.value < chart.range.low;
+                  const isHigh = point.value !== null && point.value > chart.range.high;
+                  const isLow = point.value !== null && point.value < chart.range.low;
                   const isNormal = !isHigh && !isLow;
                   
                   const prevPoint = filteredData[filteredData.length - index - 2];
-                  const change = prevPoint ? ((point.value - prevPoint.value) / prevPoint.value * 100) : null;
+                  const change = (prevPoint && point.value !== null && prevPoint.value !== null) ? 
+                    ((point.value - prevPoint.value) / prevPoint.value * 100) : null;
                   
                   return (
                     <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <div className="text-lg font-semibold text-gray-900">
-                            {point.value.toFixed(1)} {chart.unit}
+                            {point.value?.toFixed(1) || 'N/A'} {chart.unit}
                           </div>
                           <div className="text-sm text-gray-500">
                             {isClient 
@@ -305,12 +306,13 @@ export default function MetricDetailModal({ chart, isOpen, onClose }: MetricDeta
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {filteredData.slice().reverse().map((point, index) => {
-                      const isHigh = point.value > chart.range.high;
-                      const isLow = point.value < chart.range.low;
+                      const isHigh = point.value !== null && point.value > chart.range.high;
+                      const isLow = point.value !== null && point.value < chart.range.low;
                       const isNormal = !isHigh && !isLow;
                       
                       const prevPoint = filteredData[filteredData.length - index - 2];
-                      const change = prevPoint ? ((point.value - prevPoint.value) / prevPoint.value * 100) : null;
+                      const change = (prevPoint && point.value !== null && prevPoint.value !== null) ? 
+                        ((point.value - prevPoint.value) / prevPoint.value * 100) : null;
                       
                       return (
                         <tr key={index} className="hover:bg-gray-50">
@@ -325,7 +327,7 @@ export default function MetricDetailModal({ chart, isOpen, onClose }: MetricDeta
                             }
                           </td>
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                            {point.value.toFixed(2)} {chart.unit}
+                            {point.value?.toFixed(2) || 'N/A'} {chart.unit}
                           </td>
                           <td className="px-4 py-3 text-sm">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -395,7 +397,7 @@ function LargeInteractiveChart({ data, color, range, unit, isClient }: {
     ? { top: 20, right: 15, bottom: 50, left: 45 }
     : { top: 40, right: 80, bottom: 80, left: 80 };
 
-  const values = data.map(d => d.value);
+  const values = data.map(d => d.value).filter((v): v is number => v !== null);
   const minValue = Math.min(...values, range.low) * 0.9;
   const maxValue = Math.max(...values, range.high) * 1.1;
   const valueRange = maxValue - minValue;
@@ -410,7 +412,9 @@ function LargeInteractiveChart({ data, color, range, unit, isClient }: {
     return padding.left + (index / (data.length - 1)) * (width - padding.left - padding.right);
   };
 
-  const pathData = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.value)}`).join(' ');
+  const pathData = data
+    .filter(d => d.value !== null)
+    .map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.value!)}`).join(' ');
 
   const handlePointClick = (index: number) => {
     setSelectedPoint(selectedPoint === index ? null : index);
@@ -475,7 +479,7 @@ function LargeInteractiveChart({ data, color, range, unit, isClient }: {
 
             {/* Data points - larger touch targets */}
             {data.map((d, i) => {
-              const isOutOfRange = d.value < range.low || d.value > range.high;
+              const isOutOfRange = d.value !== null && (d.value < range.low || d.value > range.high);
               const isSelected = selectedPoint === i;
               
               return (
@@ -483,7 +487,7 @@ function LargeInteractiveChart({ data, color, range, unit, isClient }: {
                   {/* Large invisible touch area */}
                   <circle
                     cx={getX(i)}
-                    cy={getY(d.value)}
+                    cy={d.value !== null ? getY(d.value) : 0}
                     r={25}
                     fill="transparent"
                     className="cursor-pointer"
@@ -493,7 +497,7 @@ function LargeInteractiveChart({ data, color, range, unit, isClient }: {
                   {/* Visible point */}
                   <circle
                     cx={getX(i)}
-                    cy={getY(d.value)}
+                    cy={d.value !== null ? getY(d.value) : 0}
                     r={isSelected ? 10 : 7}
                     fill={isOutOfRange ? "#ef4444" : color}
                     stroke="white"
@@ -506,7 +510,7 @@ function LargeInteractiveChart({ data, color, range, unit, isClient }: {
                     <g>
                       <rect
                         x={getX(i) - 50}
-                        y={getY(d.value) - 50}
+                                                 y={d.value !== null ? getY(d.value) - 50 : 0}
                         width={100}
                         height={35}
                         fill="black"
@@ -515,15 +519,15 @@ function LargeInteractiveChart({ data, color, range, unit, isClient }: {
                       />
                       <text
                         x={getX(i)}
-                        y={getY(d.value) - 32}
+                        y={d.value !== null ? getY(d.value) - 32 : 0}
                         textAnchor="middle"
                         className="fill-white text-sm font-semibold"
                       >
-                        {d.value.toFixed(1)} {unit}
+                        {d.value?.toFixed(1) || 'N/A'} {unit}
                       </text>
                       <text
                         x={getX(i)}
-                        y={getY(d.value) - 18}
+                        y={d.value !== null ? getY(d.value) - 18 : 0}
                         textAnchor="middle"
                         className="fill-white text-xs"
                       >
@@ -638,14 +642,14 @@ function LargeInteractiveChart({ data, color, range, unit, isClient }: {
             />
 
             {data.map((d, i) => {
-              const isOutOfRange = d.value < range.low || d.value > range.high;
+              const isOutOfRange = d.value !== null && (d.value < range.low || d.value > range.high);
               const isSelected = selectedPoint === i;
               
               return (
                 <g key={i}>
                   <circle
                     cx={getX(i)}
-                    cy={getY(d.value)}
+                    cy={d.value !== null ? getY(d.value) : 0}
                     r={isSelected ? 8 : 6}
                     fill={isOutOfRange ? "#ef4444" : color}
                     stroke="white"
@@ -658,7 +662,7 @@ function LargeInteractiveChart({ data, color, range, unit, isClient }: {
                     <g>
                       <rect
                         x={getX(i) - 60}
-                        y={getY(d.value) - 40}
+                        y={d.value !== null ? getY(d.value) - 40 : 0}
                         width={120}
                         height={30}
                         fill="black"
@@ -667,11 +671,11 @@ function LargeInteractiveChart({ data, color, range, unit, isClient }: {
                       />
                       <text
                         x={getX(i)}
-                        y={getY(d.value) - 20}
+                        y={d.value !== null ? getY(d.value) - 20 : 0}
                         textAnchor="middle"
                         className="fill-white text-xs"
                       >
-                        {d.value.toFixed(2)} {unit}
+                        {d.value?.toFixed(2) || 'N/A'} {unit}
                       </text>
                     </g>
                   )}

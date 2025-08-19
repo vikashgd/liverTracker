@@ -90,7 +90,7 @@ export default function EnhancedDashboardCharts({ charts }: { charts: ChartSpec[
             {filteredCharts
               .filter(chart => chart.data.length > 0)
               .map((chart) => {
-                const validData = chart.data.filter(d => d.value !== null);
+                const validData = chart.data.filter((d): d is SeriesPoint & { value: number } => d.value !== null);
                 const latest = validData[validData.length - 1];
                 const previous = validData[validData.length - 2];
                 
@@ -182,14 +182,14 @@ export default function EnhancedDashboardCharts({ charts }: { charts: ChartSpec[
 }
 
 function DetailedChartView({ chart }: { chart: ChartSpec }) {
-  const validData = chart.data.filter(d => d.value !== null);
+  const validData = chart.data.filter((d): d is SeriesPoint & { value: number } => d.value !== null);
   const latest = validData[validData.length - 1];
   
   if (!latest) return <EmptyChartState />;
 
-  const min = Math.min(...validData.map(d => d.value!));
-  const max = Math.max(...validData.map(d => d.value!));
-  const avg = validData.reduce((sum, d) => sum + d.value!, 0) / validData.length;
+  const min = Math.min(...validData.map(d => d.value));
+  const max = Math.max(...validData.map(d => d.value));
+  const avg = validData.reduce((sum, d) => sum + d.value, 0) / validData.length;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-lg p-6">
@@ -273,6 +273,11 @@ function InteractiveChart({
   color: string 
 }) {
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   if (data.length === 0) return null;
 

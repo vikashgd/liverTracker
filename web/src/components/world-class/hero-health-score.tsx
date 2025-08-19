@@ -217,13 +217,30 @@ export function HeroHealthScore({ healthData, meldScore }: HeroHealthScoreProps)
 
           {/* Quick Actions */}
           <div className="flex flex-wrap gap-3">
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+            <button 
+              onClick={() => window.location.href = '/reports'}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
               📄 Upload New Report
             </button>
-            <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+            <button 
+              onClick={() => window.location.href = '/manual-entry'}
+              className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
               ✍️ Manual Entry
             </button>
-            <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+            <button 
+              onClick={() => {
+                const trendsSection = document.querySelector('[data-section="trends"]');
+                if (trendsSection) {
+                  trendsSection.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                  // Fallback: scroll to bottom of page where charts are
+                  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }
+              }}
+              className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
               📊 View Trends
             </button>
           </div>

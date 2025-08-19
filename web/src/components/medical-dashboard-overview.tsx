@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { MetricCard, CriticalMetricCard, LiverMetricCard } from './ui/metric-card';
 import { CanonicalMetric, referenceRanges } from '@/lib/metrics';
+import { calculateMELD, MELDParameters } from '@/lib/meld-calculator';
 
 interface SeriesPoint {
   date: string;
@@ -24,25 +25,33 @@ interface MedicalDashboardOverviewProps {
 
 export function MedicalDashboardOverview({ charts }: MedicalDashboardOverviewProps) {
   
-  // Calculate MELD score if we have the required metrics
+  // Calculate MELD score using the advanced calculator
   const meldScore = useMemo(() => {
     const bilirubinChart = charts.find(c => c.title === 'Bilirubin');
     const creatinineChart = charts.find(c => c.title === 'Creatinine');
     const inrChart = charts.find(c => c.title === 'INR');
+    const sodiumChart = charts.find(c => c.title === 'Sodium');
+    const albuminChart = charts.find(c => c.title === 'Albumin');
     
     const bilirubin = bilirubinChart?.data.filter(d => d.value !== null).pop()?.value;
     const creatinine = creatinineChart?.data.filter(d => d.value !== null).pop()?.value;
     const inr = inrChart?.data.filter(d => d.value !== null).pop()?.value;
+    const sodium = sodiumChart?.data.filter(d => d.value !== null).pop()?.value;
+    const albumin = albuminChart?.data.filter(d => d.value !== null).pop()?.value;
 
     if (bilirubin && creatinine && inr) {
-      // MELD Score calculation
-      const meld = Math.round(
-        3.78 * Math.log(bilirubin) + 
-        11.2 * Math.log(inr) + 
-        9.57 * Math.log(creatinine) + 
-        6.43
-      );
-      return Math.max(6, Math.min(40, meld)); // MELD is capped between 6-40
+      const meldParams: MELDParameters = {
+        bilirubin,
+        creatinine,
+        inr,
+        sodium: sodium || undefined,
+        albumin: albumin || undefined,
+        // Note: gender and dialysis would come from patient profile if available
+      };
+      
+      const result = calculateMELD(meldParams);
+      // Return the best available score: MELD 3.0 > MELD-Na > MELD
+      return result.meld3 ?? result.meldNa ?? result.meld;
     }
     return null;
   }, [charts]);

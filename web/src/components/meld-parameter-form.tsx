@@ -192,7 +192,8 @@ export function MELDParameterForm({
                       onChange={(e) => setProfile({
                         ...profile,
                         dialysis: {
-                          ...profile.dialysis!,
+                          onDialysis: profile.dialysis?.onDialysis || false,
+                          sessionsPerWeek: profile.dialysis?.sessionsPerWeek || 0,
                           lastSession: e.target.value || undefined
                         }
                       })}

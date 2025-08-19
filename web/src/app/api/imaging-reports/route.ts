@@ -51,7 +51,9 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const imaging = extractedData?.imaging || {};
+      const imaging = (extractedData && typeof extractedData === 'object' && 'imaging' in extractedData) 
+        ? (extractedData as any).imaging || {} 
+        : {};
       
       return {
         id: report.id,

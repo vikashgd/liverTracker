@@ -78,9 +78,12 @@ export interface PatientProfile {
   age?: number;
   conditions?: string[];
   medications?: string[];
+  primaryCondition?: string;
+  diagnosisDate?: string; // ISO date string
   dialysis?: {
     onDialysis: boolean;
     sessionsPerWeek: number;
+    lastSession?: string; // ISO date string
   };
 }
 

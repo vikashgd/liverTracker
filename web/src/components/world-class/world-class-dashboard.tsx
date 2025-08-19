@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { HeroHealthScore } from './hero-health-score';
 import { PremiumMetricCard, CriticalPremiumCard, HighPriorityCard } from './premium-metric-card';
 import { CanonicalMetric } from '@/lib/metrics';
+import { calculateMELD, MELDParameters } from '@/lib/meld-calculator';
 
 interface SeriesPoint {
   date: string;
@@ -88,24 +89,33 @@ export function WorldClassDashboard({ charts }: WorldClassDashboardProps) {
     }).filter(Boolean) as any[];
   }, [charts]);
 
-  // Calculate MELD score if we have the required metrics
+  // Calculate MELD score using the advanced calculator
   const meldScore = useMemo(() => {
     const bilirubinChart = charts.find(c => c.title === 'Bilirubin');
     const creatinineChart = charts.find(c => c.title === 'Creatinine');
     const inrChart = charts.find(c => c.title === 'INR');
+    const sodiumChart = charts.find(c => c.title === 'Sodium');
+    const albuminChart = charts.find(c => c.title === 'Albumin');
     
     const bilirubin = bilirubinChart?.data.filter(d => d.value !== null).pop()?.value;
     const creatinine = creatinineChart?.data.filter(d => d.value !== null).pop()?.value;
     const inr = inrChart?.data.filter(d => d.value !== null).pop()?.value;
+    const sodium = sodiumChart?.data.filter(d => d.value !== null).pop()?.value;
+    const albumin = albuminChart?.data.filter(d => d.value !== null).pop()?.value;
 
     if (bilirubin && creatinine && inr) {
-      const meld = Math.round(
-        3.78 * Math.log(bilirubin) + 
-        11.2 * Math.log(inr) + 
-        9.57 * Math.log(creatinine) + 
-        6.43
-      );
-      return Math.max(6, Math.min(40, meld));
+      const meldParams: MELDParameters = {
+        bilirubin,
+        creatinine,
+        inr,
+        sodium: sodium || undefined,
+        albumin: albumin || undefined,
+        // Note: gender and dialysis would come from patient profile if available
+      };
+      
+      const result = calculateMELD(meldParams);
+      // Return the best available score: MELD 3.0 > MELD-Na > MELD
+      return result.meld3 ?? result.meldNa ?? result.meld;
     }
     return undefined;
   }, [charts]);
@@ -143,11 +153,17 @@ export function WorldClassDashboard({ charts }: WorldClassDashboardProps) {
             </div>
             
             <div className="flex items-center gap-4">
-              <button className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl font-semibold">
-                📱 Mobile App
+              <button 
+                onClick={() => window.open('/manual-entry', '_blank')}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl font-semibold"
+              >
+                📱 Manual Entry
               </button>
-              <button className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-50 transition-all shadow-md font-semibold">
-                📄 New Report
+              <button 
+                onClick={() => window.location.href = '/reports'}
+                className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-50 transition-all shadow-md font-semibold"
+              >
+                📄 View Reports
               </button>
             </div>
           </div>

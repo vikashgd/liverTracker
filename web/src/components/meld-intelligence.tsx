@@ -21,17 +21,6 @@ export function MELDIntelligence({ charts, patientProfile, onProfileUpdate }: ME
   const [meldHistory, setMeldHistory] = useState<Array<{ date: string; meld: number; meldNa?: number; meld3?: number }>>([]);
   const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  useEffect(() => {
-    if (isClient) {
-      calculateCurrentMELD();
-      calculateMELDHistory();
-    }
-  }, [isClient, calculateCurrentMELD, calculateMELDHistory]);
-
   const calculateCurrentMELD = useCallback(() => {
     // Get latest values for MELD calculation
     const getLatestValue = (metric: CanonicalMetric) => {
@@ -56,8 +45,8 @@ export function MELDIntelligence({ charts, patientProfile, onProfileUpdate }: ME
       bilirubin: bilirubin.value!,
       creatinine: creatinine.value!,
       inr: inr.value!,
-      sodium: sodium?.value,
-      albumin: albumin?.value,
+      sodium: sodium?.value || undefined,
+      albumin: albumin?.value || undefined,
       gender: patientProfile?.gender,
       dialysis: patientProfile?.dialysis
     };
@@ -112,6 +101,17 @@ export function MELDIntelligence({ charts, patientProfile, onProfileUpdate }: ME
 
     setMeldHistory(history);
   }, [charts, patientProfile]);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      calculateCurrentMELD();
+      calculateMELDHistory();
+    }
+  }, [isClient, calculateCurrentMELD, calculateMELDHistory]);
 
   const getMELDTrend = () => {
     if (meldHistory.length < 2) return null;
