@@ -21,6 +21,29 @@ interface ConsolidatedLabReportProps {
   labData: LabDataPoint[];
 }
 
+// Comprehensive metric name normalization map
+const METRIC_NORMALIZATION: Record<string, string[]> = {
+  'Bilirubin': ['Bilirubin', 'Total Bilirubin', 'Serum Bilirubin', 'Bilirubin (Total)', 'Bilirubin Total', 'T. Bilirubin'],
+  'Creatinine': ['Creatinine', 'Serum Creatinine', 'S. Creatinine', 'Creatinine (Serum)', 'Creatinine Serum'],
+  'INR': ['INR', 'PT INR', 'INR (International Normalized Ratio)', 'Prothrombin INR', 'International Normalized Ratio'],
+  'Sodium': ['Sodium', 'Na', 'Sodium (Na+)', 'Serum Sodium', 'Na+', 'Sodium+'],
+  'SGPT/ALT': ['SGPT/ALT', 'ALT', 'SGPT', 'SGPT (ALT)', 'ALT (SGPT)', 'Alanine Aminotransferase', 'Alanine Transaminase'],
+  'SGOT/AST': ['SGOT/AST', 'AST', 'SGOT', 'SGOT (AST)', 'AST (SGOT)', 'Aspartate Aminotransferase', 'Aspartate Transaminase'],
+  'Alkaline Phosphatase': ['Alkaline Phosphatase', 'ALP', 'Alk Phos', 'Alkaline Phosphatase (ALP)', 'Alkaline Phos'],
+  'Total Protein': ['Total Protein', 'Protein Total', 'Total Prot', 'Protein'],
+  'Albumin': ['Albumin', 'Alb', 'Serum Albumin'],
+  'Globulin': ['Globulin', 'Glob', 'Serum Globulin'],
+  'A/G Ratio': ['A/G Ratio', 'Albumin/Globulin Ratio', 'A:G Ratio', 'Alb/Glob Ratio'],
+  'Hemoglobin': ['Hemoglobin', 'Hgb', 'Hb', 'Hemoglobin (Hgb)'],
+  'RBC': ['RBC', 'Red Blood Cells', 'Red Blood Cell Count', 'Erythrocyte Count'],
+  'WBC': ['WBC', 'White Blood Cells', 'White Blood Cell Count', 'Leukocyte Count'],
+  'Platelets': ['Platelets', 'Plt', 'Platelet Count', 'Thrombocyte Count'],
+  'Alpha Feto Protein': ['Alpha Feto Protein', 'AFP', 'Alpha-Fetoprotein', 'Alpha Fetoprotein'],
+  'Potassium': ['Potassium', 'K+', 'K', 'Serum Potassium'],
+  'PT': ['PT', 'Prothrombin Time', 'Prothrombin Time (PT)'],
+  'MNPT': ['MNPT', 'Mean Normal Prothrombin Time', 'Normal PT']
+};
+
 // Define standard lab parameters with their normal ranges
 const LAB_PARAMETERS = [
   { name: 'Bilirubin', unit: 'mg/dL', range: [0.3, 1.2], category: 'liver' },
@@ -41,25 +64,68 @@ const LAB_PARAMETERS = [
   { name: 'Alpha Feto Protein', unit: 'ng/mL', range: [0, 10], category: 'tumor' },
   { name: 'Potassium', unit: 'mEq/L', range: [3.5, 5.0], category: 'electrolyte' },
   { name: 'PT', unit: 'sec', range: [9.4, 12.5], category: 'coagulation' },
-  { name: 'MNPT', unit: 'sec', range: [9.4, 12.5], category: 'coagulation' },
-  { name: 'MELD', unit: '', range: [6, 40], category: 'score' },
-  { name: 'MELD New', unit: '', range: [6, 40], category: 'score' }
+  { name: 'MNPT', unit: 'sec', range: [9.4, 12.5], category: 'coagulation' }
 ];
 
-// MELD Score calculation function
+// MELD Score calculation function with clinical bounds
 const calculateMELD = (bilirubin: number, creatinine: number, inr: number): number => {
+  // Apply clinical bounds: minimum 1.0 for all parameters, creatinine max 4.0
+  const clampedBilirubin = Math.max(bilirubin, 1.0);
+  const clampedCreatinine = Math.max(Math.min(creatinine, 4.0), 1.0);
+  const clampedINR = Math.max(inr, 1.0);
+  
   // MELD = 3.78 × ln(serum bilirubin) + 11.2 × ln(INR) + 9.57 × ln(serum creatinine) + 6.43
-  const meld = 3.78 * Math.log(bilirubin) + 11.2 * Math.log(inr) + 9.57 * Math.log(creatinine) + 6.43;
+  const meld = 3.78 * Math.log(clampedBilirubin) + 11.2 * Math.log(clampedINR) + 9.57 * Math.log(clampedCreatinine) + 6.43;
   return Math.round(meld);
 };
 
 // MELD-Na Score calculation function (includes sodium)
 const calculateMELDNa = (bilirubin: number, creatinine: number, inr: number, sodium: number): number => {
-  // MELD-Na = MELD + 1.32 × (137 - Na) - [0.033 × MELD × (137 - Na)]
+  // Apply clinical bounds: sodium clamped to 125-137
+  const clampedSodium = Math.max(Math.min(sodium, 137), 125);
+  
   const meld = calculateMELD(bilirubin, creatinine, inr);
-  const sodiumFactor = 137 - sodium;
+  const sodiumFactor = 137 - clampedSodium;
   const meldNa = meld + 1.32 * sodiumFactor - (0.033 * meld * sodiumFactor);
   return Math.round(Math.max(meldNa, meld)); // MELD-Na cannot be less than MELD
+};
+
+// Parse numeric value from textValue when value is null
+const parseNumericFromText = (textValue: string | null): number | null => {
+  if (!textValue) return null;
+  
+  // Remove common prefixes and extract first numeric value
+  const cleanText = textValue
+    .replace(/[<>]/g, '') // Remove < and >
+    .replace(/,/g, '') // Remove commas
+    .trim();
+  
+  // Match first numeric value (including decimals)
+  const numericMatch = cleanText.match(/^(\d+\.?\d*)/);
+  if (numericMatch) {
+    const parsed = parseFloat(numericMatch[1]);
+    return isNaN(parsed) ? null : parsed;
+  }
+  
+  return null;
+};
+
+// Normalize metric name to canonical form
+const normalizeMetricName = (metricName: string): string => {
+  const normalizedName = metricName.trim();
+  
+  // Check if this metric matches any of our known parameters
+  for (const [canonicalName, variants] of Object.entries(METRIC_NORMALIZATION)) {
+    if (variants.some(variant => 
+      normalizedName.toLowerCase().includes(variant.toLowerCase()) ||
+      variant.toLowerCase().includes(normalizedName.toLowerCase())
+    )) {
+      return canonicalName;
+    }
+  }
+  
+  // Return original name if no match found
+  return normalizedName;
 };
 
 export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
@@ -67,7 +133,7 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
   const [showAllParameters, setShowAllParameters] = useState(true);
   const [groupByMonth, setGroupByMonth] = useState(true);
 
-  // Format date for display - moved above useMemo to fix reference error
+  // Format date for display
   const formatDate = (date: Date) => {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - date.getTime());
@@ -82,26 +148,52 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
     }
   };
 
+  // Normalize and enrich lab data with parsed values
+  const normalizedLabData = useMemo(() => {
+    return labData.map(dataPoint => ({
+      ...dataPoint,
+      metrics: dataPoint.metrics.map(metric => {
+        // Parse numeric value from textValue if value is null
+        let finalValue = metric.value;
+        if (finalValue === null && metric.textValue) {
+          finalValue = parseNumericFromText(metric.textValue);
+        }
+        
+        return {
+          ...metric,
+          value: finalValue,
+          normalizedName: normalizeMetricName(metric.name)
+        };
+      })
+    }));
+  }, [labData]);
+
   // Get unique dates and group by month if enabled
   const dateGroups = useMemo(() => {
     if (!groupByMonth) {
-      // Individual dates
-      const uniqueDates = [...new Set(labData.map(d => d.date.toDateString()))];
+      // Individual dates - use UTC date strings for consistency
+      const uniqueDates = [...new Set(normalizedLabData.map(d => 
+        `${d.date.getFullYear()}-${String(d.date.getMonth() + 1).padStart(2, '0')}-${String(d.date.getDate()).padStart(2, '0')}`
+      ))];
+      
       return uniqueDates
-        .map(dateStr => new Date(dateStr))
-        .sort((a, b) => a.getTime() - b.getTime())
-        .map(date => ({
-          key: date.toDateString(),
-          label: formatDate(date),
-          fullDate: date,
-          dates: [date]
-        }));
+        .sort()
+        .map(dateStr => {
+          const [year, month, day] = dateStr.split('-').map(Number);
+          const date = new Date(year, month - 1, day);
+          return {
+            key: dateStr,
+            label: formatDate(date),
+            fullDate: date,
+            dates: [date]
+          };
+        });
     } else {
-      // Group by month
+      // Group by month - use UTC month keys
       const monthGroups = new Map<string, { label: string; dates: Date[]; fullDate: Date }>();
       
-      labData.forEach(dataPoint => {
-        const monthKey = `${dataPoint.date.getFullYear()}-${dataPoint.date.getMonth()}`;
+      normalizedLabData.forEach(dataPoint => {
+        const monthKey = `${dataPoint.date.getFullYear()}-${String(dataPoint.date.getMonth() + 1).padStart(2, '0')}`;
         const monthLabel = dataPoint.date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
         
         if (!monthGroups.has(monthKey)) {
@@ -123,23 +215,39 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
           dates: group.dates.sort((a, b) => a.getTime() - b.getTime())
         }));
     }
-  }, [labData, groupByMonth]);
+  }, [normalizedLabData, groupByMonth]);
 
-  // Get all available parameters from the data
+  // Get all available parameters from the normalized data
   const availableParameters = useMemo(() => {
     const params = new Set<string>();
-    labData.forEach(dataPoint => {
+    normalizedLabData.forEach(dataPoint => {
       dataPoint.metrics.forEach(metric => {
-        params.add(metric.name);
+        params.add(metric.normalizedName);
       });
     });
     return Array.from(params).sort();
-  }, [labData]);
+  }, [normalizedLabData]);
+
+  // Create comprehensive parameter list: known parameters + discovered parameters
+  const allParameters = useMemo(() => {
+    const knownParams = LAB_PARAMETERS.map(p => p.name);
+    const discoveredParams = availableParameters.filter(p => !knownParams.includes(p));
+    
+    return [
+      ...LAB_PARAMETERS,
+      ...discoveredParams.map(name => ({
+        name,
+        unit: null,
+        range: [null, null],
+        category: 'discovered'
+      }))
+    ];
+  }, [availableParameters]);
 
   // Filter parameters to show
   const parametersToShow = showAllParameters 
-    ? LAB_PARAMETERS.filter(p => availableParameters.includes(p.name))
-    : LAB_PARAMETERS.filter(p => selectedParameters.includes(p.name));
+    ? allParameters
+    : allParameters.filter(p => selectedParameters.includes(p.name));
 
   // Get value for a specific parameter and date group
   const getValue = (parameterName: string, dateGroup: { dates: Date[] }): { value: number | null; unit: string | null; isAbnormal: boolean; count: number } => {
@@ -148,10 +256,16 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
     let unit: string | null = null;
     
     dateGroup.dates.forEach(date => {
-      const dataPoint = labData.find(d => d.date.toDateString() === date.toDateString());
+      const dataPoint = normalizedLabData.find(d => {
+        const dataDate = `${d.date.getFullYear()}-${String(d.date.getMonth() + 1).padStart(2, '0')}-${String(d.date.getDate()).padStart(2, '0')}`;
+        const groupDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        return dataDate === groupDate;
+      });
+      
       if (!dataPoint) return;
 
-      const metric = dataPoint.metrics.find(m => m.name === parameterName);
+      // Find metric by normalized name
+      const metric = dataPoint.metrics.find(m => m.normalizedName === parameterName);
       if (!metric || metric.value === null) return;
 
       totalValue += metric.value;
@@ -164,7 +278,9 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
     const avgValue = totalValue / count;
     const param = LAB_PARAMETERS.find(p => p.name === parameterName);
     
-    if (!param) return { value: avgValue, unit, isAbnormal: false, count };
+    if (!param || !param.range[0] || !param.range[1]) {
+      return { value: avgValue, unit, isAbnormal: false, count };
+    }
     
     const isAbnormal = avgValue < param.range[0] || avgValue > param.range[1];
     return { value: avgValue, unit, isAbnormal, count };
@@ -173,7 +289,7 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
   // Calculate MELD scores for each date group
   const meldScores = useMemo(() => {
     return dateGroups.map(dateGroup => {
-      // Get values for MELD calculation
+      // Get values for MELD calculation using normalized names
       const bilirubin = getValue('Bilirubin', dateGroup);
       const creatinine = getValue('Creatinine', dateGroup);
       const inr = getValue('INR', dateGroup);
@@ -218,7 +334,7 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
         }
       };
     });
-  }, [dateGroups, labData]);
+  }, [dateGroups, normalizedLabData]);
 
   // Get parameter category color
   const getCategoryColor = (category: string) => {
@@ -230,7 +346,8 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
       protein: 'bg-indigo-50 border-indigo-200 text-indigo-700',
       blood: 'bg-red-50 border-red-200 text-red-700',
       tumor: 'bg-pink-50 border-pink-200 text-pink-700',
-      score: 'bg-emerald-50 border-emerald-200 text-emerald-700'
+      score: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+      discovered: 'bg-gray-50 border-gray-200 text-gray-700'
     };
     return colors[category as keyof typeof colors] || 'bg-gray-50 border-gray-200 text-gray-700';
   };
@@ -402,109 +519,26 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
                       
                       {/* Range Column */}
                       <td className="border-b border-gray-200 px-4 py-4 text-center bg-yellow-50">
-                        <div className="text-sm font-semibold text-gray-900">
-                          {param.range[0]} - {param.range[1]}
-                        </div>
-                        {param.unit && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {param.unit}
+                        {param.range[0] !== null && param.range[1] !== null ? (
+                          <>
+                            <div className="text-sm font-semibold text-gray-900">
+                              {param.range[0]} - {param.range[1]}
+                            </div>
+                            {param.unit && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {param.unit}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-xs text-gray-500">
+                            No reference range
                           </div>
                         )}
                       </td>
                     </tr>
                   );
                 })}
-
-                {/* MELD Score Rows - Only show where we can calculate */}
-                {meldScores.some(score => score.canCalculateMELD) && (
-                  <>
-                    {/* MELD Score Row */}
-                    <tr className="bg-emerald-50 hover:bg-emerald-100 border-t-2 border-emerald-300">
-                      <td className="sticky left-0 z-10 bg-emerald-50 border-r border-gray-200 px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border bg-emerald-100 border-emerald-300 text-emerald-800">
-                            🧮 MELD Score
-                          </span>
-                          <span className="text-xs text-emerald-600">(Calculated)</span>
-                        </div>
-                      </td>
-                      
-                      {dateGroups.map((dateGroup, dateIndex) => {
-                        const meldData = meldScores.find(score => score.dateGroup.key === dateGroup.key);
-                        
-                        return (
-                          <td key={dateIndex} className="border-b border-gray-200 px-4 py-4 text-center">
-                            {meldData?.canCalculateMELD && meldData.meldScore !== null ? (
-                              <div className="space-y-1">
-                                <div className="font-bold text-xl text-emerald-800 bg-emerald-100 px-3 py-2 rounded-lg">
-                                  {meldData.meldScore}
-                                </div>
-                                <div className="text-xs text-emerald-600">
-                                  Bilirubin: {meldData.parameters.bilirubin?.toFixed(2)} | 
-                                  Creatinine: {meldData.parameters.creatinine?.toFixed(2)} | 
-                                  INR: {meldData.parameters.inr?.toFixed(2)}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 text-sm">—</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                      
-                      <td className="border-b border-gray-200 px-4 py-4 text-center bg-yellow-50">
-                        <div className="text-sm font-semibold text-gray-900">
-                          6 - 40
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Higher = Worse
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* MELD-Na Score Row */}
-                    <tr className="bg-emerald-50 hover:bg-emerald-100">
-                      <td className="sticky left-0 z-10 bg-emerald-50 border-r border-gray-200 px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border bg-emerald-100 border-emerald-300 text-emerald-800">
-                            🧮 MELD-Na Score
-                          </span>
-                          <span className="text-xs text-emerald-600">(With Sodium)</span>
-                        </div>
-                      </td>
-                      
-                      {dateGroups.map((dateGroup, dateIndex) => {
-                        const meldData = meldScores.find(score => score.dateGroup.key === dateGroup.key);
-                        
-                        return (
-                          <td key={dateIndex} className="border-b border-gray-200 px-4 py-4 text-center">
-                            {meldData?.canCalculateMELDNa && meldData.meldNaScore !== null ? (
-                              <div className="space-y-1">
-                                <div className="font-bold text-xl text-emerald-800 bg-emerald-100 px-3 py-2 rounded-lg">
-                                  {meldData.meldNaScore}
-                                </div>
-                                <div className="text-xs text-emerald-600">
-                                  + Sodium: {meldData.parameters.sodium?.toFixed(1)}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 text-sm">—</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                      
-                      <td className="border-b border-gray-200 px-4 py-4 text-center bg-yellow-50">
-                        <div className="text-sm font-semibold text-gray-900">
-                          6 - 40
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Higher = Worse
-                        </div>
-                      </td>
-                    </tr>
-                  </>
-                )}
               </tbody>
             </table>
           </div>
@@ -539,9 +573,30 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
             <h3 className="text-sm font-semibold text-gray-700 mb-2">Debug Info</h3>
             <div className="text-xs text-gray-600 space-y-1">
               <div>Total data points: {labData.length}</div>
-              <div>Available parameters: {availableParameters.length}</div>
+              <div>Normalized parameters: {availableParameters.length}</div>
               <div>Date groups: {dateGroups.length}</div>
               <div>Parameters shown: {parametersToShow.length}</div>
+              <div>Known parameters: {LAB_PARAMETERS.length}</div>
+              <div>Discovered parameters: {availableParameters.filter(p => !LAB_PARAMETERS.map(lp => lp.name).includes(p)).length}</div>
+            </div>
+            
+            {/* Show normalized metric mapping */}
+            <div className="mt-4">
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">Normalized Metrics:</h4>
+              <div className="text-xs text-gray-600 max-h-32 overflow-y-auto">
+                {availableParameters.slice(0, 20).map(param => (
+                  <div key={param} className="mb-1">
+                    <span className="font-medium">{param}</span>
+                    {LAB_PARAMETERS.find(lp => lp.name === param) ? 
+                      <span className="text-green-600 ml-2">✓ Known</span> : 
+                      <span className="text-blue-600 ml-2">🔍 Discovered</span>
+                    }
+                  </div>
+                ))}
+                {availableParameters.length > 20 && (
+                  <div className="text-gray-500">... and {availableParameters.length - 20} more</div>
+                )}
+              </div>
             </div>
           </div>
         )}

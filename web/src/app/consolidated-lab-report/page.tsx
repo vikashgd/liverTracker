@@ -76,5 +76,21 @@ export default async function ConsolidatedLabReportPage() {
   console.log('🔄 Transformed lab data:', labData.length, 'data points');
   console.log('📅 Date range:', labData.length > 0 ? `${labData[0]?.date} to ${labData[labData.length - 1]?.date}` : 'No data');
 
+  // Specific check for July 28, 2021
+  const july28Data = labData.filter(d => {
+    const date = d.date;
+    return date.getFullYear() === 2021 && date.getMonth() === 6 && date.getDate() === 28;
+  });
+  
+  if (july28Data.length > 0) {
+    console.log('🎯 July 28, 2021 data found:', july28Data.length, 'reports');
+    july28Data.forEach((report, index) => {
+      console.log(`📋 Report ${index + 1} (${report.reportType}):`, report.metrics.length, 'metrics');
+      console.log('🔍 Sample metrics:', report.metrics.slice(0, 5).map(m => ({ name: m.name, value: m.value, unit: m.unit })));
+    });
+  } else {
+    console.log('⚠️ No data found for July 28, 2021');
+  }
+
   return <ConsolidatedLabReport labData={labData} />;
 }
