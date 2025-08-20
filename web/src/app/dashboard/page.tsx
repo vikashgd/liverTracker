@@ -9,6 +9,7 @@ import { WorldClassDashboard } from "@/components/world-class/world-class-dashbo
 import CardGridDashboard from "@/components/card-grid-dashboard";
 import { HealthIntelligenceDashboard } from "@/components/health-intelligence-dashboard";
 import EnhancedAIDashboard from "@/components/enhanced-ai-dashboard";
+import AdvancedMedicalDashboard from "@/components/advanced-medical-dashboard";
 
 /**
  * Load chart data for a specific metric using the Medical Platform
@@ -145,15 +146,22 @@ export default async function DashboardPage() {
       <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-t border-purple-200">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <EnhancedAIDashboard charts={charts} />
-        </div>
-      </div>
+            </div>
+          </div>
 
       {/* Original AI Health Intelligence Section */}
       <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border-t border-indigo-200">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <HealthIntelligenceDashboard charts={charts} />
         </div>
-      </div>
+                </div>
+
+      {/* Advanced Medical Calculators */}
+      <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-t border-emerald-200">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <AdvancedMedicalDashboard charts={charts} />
+        </div>
+        </div>
 
       {/* Interactive Chart Analysis */}
       <div className="bg-white border-t border-gray-200" data-section="trends">

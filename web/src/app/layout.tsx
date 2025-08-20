@@ -5,6 +5,8 @@ import "../styles/medical-design.css";
 import { Providers } from "@/components/providers";
 import { MedicalHeader } from "@/components/medical-header";
 import { MobileDebugInfo } from "@/components/mobile-debug";
+import { PWAServiceWorker } from "@/components/pwa-service-worker";
+import { OfflineIndicator } from "@/components/offline-indicator";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -13,10 +15,32 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LiverTracker - Medical Data Intelligence",
-  description: "Professional liver health tracking with AI-powered insights and medical-grade data analysis",
-  keywords: ["liver health", "medical tracking", "lab results", "healthcare"],
+  title: "LiverTracker - Medical Intelligence Platform",
+  description: "World-class medical intelligence platform for liver health monitoring, analysis, and clinical decision support",
+  keywords: ["liver health", "medical tracker", "health monitoring", "MELD score", "Child-Pugh", "medical calculator", "health analytics"],
   authors: [{ name: "LiverTracker Team" }],
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "LiverTracker",
+  },
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: "LiverTracker",
+    title: "LiverTracker - Medical Intelligence Platform", 
+    description: "World-class medical intelligence platform for liver health monitoring and analysis",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -26,6 +50,31 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* PWA Meta Tags */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
+        <meta name="theme-color" content="#6366f1" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="LiverTracker" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="msapplication-TileColor" content="#6366f1" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        
+        {/* App Icons */}
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="167x167" href="/icons/icon-192x192.png" />
+        
+        {/* Splash Screens */}
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        
+        {/* Preconnect for performance */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      </head>
       <body className={`${inter.variable} font-sans antialiased min-h-screen bg-medical-neutral-50`} suppressHydrationWarning>
         <Providers>
           <div className="min-h-screen flex flex-col">
@@ -53,6 +102,8 @@ export default function RootLayout({
               </div>
             </footer>
           </div>
+          <PWAServiceWorker />
+          <OfflineIndicator />
           <MobileDebugInfo />
         </Providers>
       </body>

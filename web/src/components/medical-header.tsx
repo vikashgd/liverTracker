@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
+import { OfflineStatusBadge } from '@/components/offline-indicator';
 
 export function MedicalHeader() {
   const { data: session } = useSession();
@@ -61,6 +62,7 @@ export function MedicalHeader() {
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
+            <OfflineStatusBadge />
             {session ? (
               <div className="flex items-center space-x-3">
                 <div className="hidden sm:block text-right">
