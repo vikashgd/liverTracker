@@ -21,92 +21,36 @@ interface ConsolidatedLabReportProps {
   labData: LabDataPoint[];
 }
 
-// Comprehensive metric name normalization map for LIVER CIRRHOSIS parameters
-const LIVER_METRIC_NORMALIZATION: Record<string, string[]> = {
-  // MELD Score Components (Critical for Liver Cirrhosis)
+// Comprehensive metric name normalization map for common lab parameters
+const METRIC_NORMALIZATION: Record<string, string[]> = {
+  // Core lab parameters
   'Bilirubin': ['Bilirubin', 'Total Bilirubin', 'T. Bilirubin', 'Total Bili', 'Bili Total', 'Serum Bilirubin'],
   'Creatinine': ['Creatinine', 'Serum Creatinine', 'S. Creatinine', 'Creat', 'Serum Creat'],
   'INR': ['INR', 'PT INR', 'International Normalized Ratio', 'Prothrombin Time INR', 'PT-INR'],
-  
-  // Liver Function Tests (Core Liver Markers)
   'ALT': ['ALT', 'SGPT', 'SGPT (ALT)', 'Alanine Aminotransferase', 'Alanine Transaminase'],
   'AST': ['AST', 'SGOT', 'SGOT (AST)', 'Aspartate Aminotransferase', 'Aspartate Transaminase'],
   'ALP': ['ALP', 'Alk Phos', 'Alkaline Phosphatase', 'Alkaline Phos'],
-  'GGT': ['GGT', 'Gamma GT', 'Gamma-Glutamyl Transferase', 'Gamma Glutamyl Transferase'],
-  
-  // Protein Markers (Liver Synthesis)
   'Albumin': ['Albumin', 'Alb', 'Serum Albumin', 'Albumin Serum'],
   'Total Protein': ['Total Protein', 'Protein Total', 'Total Prot', 'Protein', 'Total Prot.'],
-  
-  // Portal Hypertension & Coagulation
   'Platelets': ['Platelets', 'Plt', 'Platelet Count', 'Platelet', 'Plt Count'],
-  
-  // Electrolytes (MELD-Na Component)
   'Sodium': ['Sodium', 'Na', 'Na+', 'Serum Sodium'],
-  'Potassium': ['Potassium', 'K', 'K+', 'Serum Potassium'],
-  
-  // Additional Liver-Related (if present)
-  'Ammonia': ['Ammonia', 'NH3', 'Serum Ammonia', 'Blood Ammonia'],
-  'Lactate': ['Lactate', 'Lactic Acid', 'Lactate Acid'],
-  'Glucose': ['Glucose', 'Blood Sugar', 'Fasting Glucose', 'Random Glucose'],
-  'BUN': ['BUN', 'Blood Urea Nitrogen', 'Urea Nitrogen', 'Urea'],
-  'Uric Acid': ['Uric Acid', 'Urate', 'Serum Uric Acid']
+  'Potassium': ['Potassium', 'K', 'K+', 'Serum Potassium']
 };
 
-// Define LIVER CIRRHOSIS parameters with their normal ranges (based on your working dashboard)
-const LIVER_CIRRHOSIS_PARAMETERS = [
-  // 🎯 MELD Score Components (Critical for Liver Cirrhosis)
-  { name: 'Bilirubin', unit: 'mg/dL', range: [0.3, 1.2], category: 'meld' },
-  { name: 'Creatinine', unit: 'mg/dL', range: [0.67, 1.17], category: 'meld' },
-  { name: 'INR', unit: '', range: [0.8, 1.2], category: 'meld' },
-  
-  // 🧪 Liver Function Tests (Core Liver Markers)
+// Define essential lab parameters (only the most common ones)
+const LAB_PARAMETERS = [
+  { name: 'Bilirubin', unit: 'mg/dL', range: [0.3, 1.2], category: 'liver' },
+  { name: 'Creatinine', unit: 'mg/dL', range: [0.67, 1.17], category: 'kidney' },
+  { name: 'INR', unit: '', range: [0.8, 1.2], category: 'coagulation' },
   { name: 'ALT', unit: 'U/L', range: [0, 50], category: 'liver' },
   { name: 'AST', unit: 'U/L', range: [0, 40], category: 'liver' },
   { name: 'ALP', unit: 'U/L', range: [44, 147], category: 'liver' },
-  { name: 'GGT', unit: 'U/L', range: [0, 65], category: 'liver' },
-  
-  // 🥚 Protein Markers (Liver Synthesis)
   { name: 'Albumin', unit: 'g/dL', range: [3.4, 5.4], category: 'protein' },
   { name: 'Total Protein', unit: 'g/dL', range: [6.0, 8.3], category: 'protein' },
-  
-  // 🩸 Portal Hypertension & Coagulation
-  { name: 'Platelets', unit: 'K/µL', range: [150, 450], category: 'portal' },
-  
-  // ⚡ Electrolytes (MELD-Na Component)
+  { name: 'Platelets', unit: 'K/µL', range: [150, 450], category: 'blood' },
   { name: 'Sodium', unit: 'mEq/L', range: [136, 145], category: 'electrolyte' },
-  { name: 'Potassium', unit: 'mEq/L', range: [3.5, 5.0], category: 'electrolyte' },
-  
-  // 🔬 Additional Liver-Related (if present in data)
-  { name: 'Ammonia', unit: 'µmol/L', range: [11, 32], category: 'liver' },
-  { name: 'Lactate', unit: 'mmol/L', range: [0.5, 2.2], category: 'liver' },
-  { name: 'Glucose', unit: 'mg/dL', range: [70, 100], category: 'metabolic' },
-  { name: 'BUN', unit: 'mg/dL', range: [7, 20], category: 'kidney' },
-  { name: 'Uric Acid', unit: 'mg/dL', range: [3.4, 7.0], category: 'metabolic' }
+  { name: 'Potassium', unit: 'mEq/L', range: [3.5, 5.0], category: 'electrolyte' }
 ];
-
-// MELD Score calculation function with clinical bounds
-const calculateMELD = (bilirubin: number, creatinine: number, inr: number): number => {
-  // Apply clinical bounds: minimum 1.0 for all parameters, creatinine max 4.0
-  const clampedBilirubin = Math.max(bilirubin, 1.0);
-  const clampedCreatinine = Math.max(Math.min(creatinine, 4.0), 1.0);
-  const clampedINR = Math.max(inr, 1.0);
-  
-  // MELD = 3.78 × ln(serum bilirubin) + 11.2 × ln(INR) + 9.57 × ln(serum creatinine) + 6.43
-  const meld = 3.78 * Math.log(clampedBilirubin) + 11.2 * Math.log(clampedINR) + 9.57 * Math.log(clampedCreatinine) + 6.43;
-  return Math.round(meld);
-};
-
-// MELD-Na Score calculation function (includes sodium)
-const calculateMELDNa = (bilirubin: number, creatinine: number, inr: number, sodium: number): number => {
-  // Apply clinical bounds: sodium clamped to 125-137
-  const clampedSodium = Math.max(Math.min(sodium, 137), 125);
-  
-  const meld = calculateMELD(bilirubin, creatinine, inr);
-  const sodiumFactor = 137 - clampedSodium;
-  const meldNa = meld + 1.32 * sodiumFactor - (0.033 * meld * sodiumFactor);
-  return Math.round(Math.max(meldNa, meld)); // MELD-Na cannot be less than MELD
-};
 
 // Parse numeric value from textValue when value is null
 const parseNumericFromText = (textValue: string | null): number | null => {
@@ -133,7 +77,7 @@ const normalizeMetricName = (metricName: string): string => {
   const normalizedName = metricName.trim();
   
   // Check if this metric matches any of our known parameters
-  for (const [canonicalName, variants] of Object.entries(LIVER_METRIC_NORMALIZATION)) {
+  for (const [canonicalName, variants] of Object.entries(METRIC_NORMALIZATION)) {
     if (variants.some(variant => 
       normalizedName.toLowerCase().includes(variant.toLowerCase()) ||
       variant.toLowerCase().includes(normalizedName.toLowerCase())
@@ -248,11 +192,11 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
 
   // Create comprehensive parameter list: known parameters + discovered parameters
   const allParameters = useMemo(() => {
-    const knownParams = LIVER_CIRRHOSIS_PARAMETERS.map(p => p.name);
+    const knownParams = LAB_PARAMETERS.map(p => p.name);
     const discoveredParams = availableParameters.filter(p => !knownParams.includes(p));
     
     return [
-      ...LIVER_CIRRHOSIS_PARAMETERS,
+      ...LAB_PARAMETERS,
       ...discoveredParams.map(name => ({
         name,
         unit: null,
@@ -294,7 +238,7 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
     if (count === 0) return { value: null, unit: null, isAbnormal: false, count: 0 };
     
     const avgValue = totalValue / count;
-    const param = LIVER_CIRRHOSIS_PARAMETERS.find(p => p.name === parameterName);
+    const param = LAB_PARAMETERS.find(p => p.name === parameterName);
     
     if (!param || !param.range[0] || !param.range[1]) {
       return { value: avgValue, unit, isAbnormal: false, count };
@@ -304,79 +248,17 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
     return { value: avgValue, unit, isAbnormal, count };
   };
 
-  // Calculate MELD scores for each date group
-  const meldScores = useMemo(() => {
-    return dateGroups.map(dateGroup => {
-      // Get values for MELD calculation using normalized names
-      const bilirubin = getValue('Bilirubin', dateGroup);
-      const creatinine = getValue('Creatinine', dateGroup);
-      const inr = getValue('INR', dateGroup);
-      const sodium = getValue('Sodium', dateGroup);
 
-      let meldScore: number | null = null;
-      let meldNaScore: number | null = null;
-      let canCalculateMELD = false;
-      let canCalculateMELDNa = false;
 
-      // Check if we can calculate MELD (need bilirubin, creatinine, INR)
-      if (bilirubin.value !== null && creatinine.value !== null && inr.value !== null) {
-        canCalculateMELD = true;
-        try {
-          meldScore = calculateMELD(bilirubin.value, creatinine.value, inr.value);
-        } catch (error) {
-          console.warn('Error calculating MELD:', error);
-        }
-      }
-
-      // Check if we can calculate MELD-Na (need sodium in addition)
-      if (canCalculateMELD && sodium.value !== null) {
-        canCalculateMELDNa = true;
-        try {
-          meldNaScore = calculateMELDNa(bilirubin.value!, creatinine.value!, inr.value!, sodium.value);
-        } catch (error) {
-          console.warn('Error calculating MELD-Na:', error);
-        }
-      }
-
-      return {
-        dateGroup,
-        meldScore,
-        meldNaScore,
-        canCalculateMELD,
-        canCalculateMELDNa,
-        parameters: {
-          bilirubin: bilirubin.value,
-          creatinine: creatinine.value,
-          inr: inr.value,
-          sodium: sodium.value
-        }
-      };
-    });
-  }, [dateGroups, normalizedLabData]);
-
-  // Get parameter category color for liver cirrhosis parameters
+  // Get parameter category color
   const getCategoryColor = (category: string) => {
     const colors = {
-      // 🎯 MELD Score Components (Critical for Liver Cirrhosis)
-      meld: 'bg-red-50 border-red-200 text-red-700',
-      
-      // 🧪 Liver Function Tests (Core Liver Markers)
-      liver: 'bg-blue-50 border-blue-200 text-blue-700',
-      
-      // 🥚 Protein Markers (Liver Synthesis)
+      liver: 'bg-red-50 border-red-200 text-red-700',
+      kidney: 'bg-blue-50 border-blue-200 text-blue-700',
+      coagulation: 'bg-purple-50 border-purple-200 text-purple-700',
       protein: 'bg-indigo-50 border-indigo-200 text-indigo-700',
-      
-      // 🩸 Portal Hypertension & Coagulation
-      portal: 'bg-purple-50 border-purple-200 text-purple-700',
-      
-      // ⚡ Electrolytes (MELD-Na Component)
+      blood: 'bg-purple-50 border-purple-200 text-purple-700',
       electrolyte: 'bg-yellow-50 border-yellow-200 text-yellow-700',
-      
-      // 🔬 Additional Liver-Related
-      metabolic: 'bg-green-50 border-green-200 text-green-700',
-      kidney: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-      
-      // 🆕 Discovered Parameters
       discovered: 'bg-gray-50 border-gray-200 text-gray-700'
     };
     return colors[category as keyof typeof colors] || 'bg-gray-50 border-gray-200 text-gray-700';
@@ -397,10 +279,10 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
                 Back to Reports
               </Link>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                🫀 Liver Cirrhosis Lab Report
+                🧪 Consolidated Lab Report
               </h1>
               <p className="text-lg text-gray-600">
-                Track liver function, MELD scores, and cirrhosis progression over time
+                Track common lab parameters over time
               </p>
             </div>
           </div>
@@ -469,7 +351,7 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
                   {/* Sticky Parameter Column */}
                   <th className="sticky left-0 z-10 bg-gray-50 border-r border-gray-200 px-6 py-4 text-left font-semibold text-gray-900 min-w-[220px]">
                     <div className="flex items-center space-x-2">
-                      <span>Liver Parameter</span>
+                      <span>Lab Parameter</span>
                       <span className="text-xs text-gray-500 font-normal">(Normal Range)</span>
                     </div>
                   </th>
@@ -501,12 +383,11 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
               <tbody className="divide-y divide-gray-200">
                 {parametersToShow.map((param, paramIndex) => {
                   const categoryColor = getCategoryColor(param.category);
-                  const isMELD = param.name.includes('MELD');
                   
                   return (
                     <tr 
                       key={param.name} 
-                      className={`${paramIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${isMELD ? 'bg-emerald-50' : ''} hover:bg-gray-100`}
+                      className={`${paramIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100`}
                     >
                       {/* Sticky Parameter Column */}
                       <td className="sticky left-0 z-10 bg-inherit border-r border-gray-200 px-6 py-4">
@@ -576,42 +457,31 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
 
         {/* Legend */}
         <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Liver Cirrhosis Parameter Categories</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Lab Parameter Categories</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex items-center space-x-3">
               <div className="w-5 h-5 bg-red-100 border-2 border-red-300 rounded-md"></div>
-              <span className="text-sm text-gray-700">🎯 MELD Components (Critical)</span>
+              <span className="text-sm text-gray-700">🧪 Liver Function</span>
             </div>
             <div className="flex items-center space-x-3">
               <div className="w-5 h-5 bg-blue-100 border-2 border-blue-300 rounded-md"></div>
-              <span className="text-sm text-gray-700">🧪 Liver Function Tests</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-5 h-5 bg-indigo-100 border-2 border-indigo-300 rounded-md"></div>
               <span className="text-sm text-gray-700">🥚 Protein Markers</span>
             </div>
             <div className="flex items-center space-x-3">
               <div className="w-5 h-5 bg-purple-100 border-2 border-purple-300 rounded-md"></div>
-              <span className="text-sm text-gray-700">🩸 Portal Hypertension</span>
+              <span className="text-sm text-gray-700">🩸 Blood & Coagulation</span>
             </div>
             <div className="flex items-center space-x-3">
               <div className="w-5 h-5 bg-yellow-100 border-2 border-yellow-300 rounded-md"></div>
-              <span className="text-sm text-gray-700">⚡ Electrolytes (MELD-Na)</span>
+              <span className="text-sm text-gray-700">⚡ Electrolytes</span>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="w-5 h-5 bg-green-100 border-2 border-green-300 rounded-md"></div>
-              <span className="text-sm text-gray-700">🔬 Additional Liver-Related</span>
+              <div className="w-5 h-5 bg-emerald-100 border-2 border-emerald-200 rounded-md"></div>
+              <span className="text-sm text-gray-700">🧪 Kidney Function</span>
             </div>
-          </div>
-          
-          {/* MELD Score Info */}
-          <div className="mt-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-            <h4 className="text-sm font-semibold text-emerald-800 mb-2">🧮 MELD Score Information</h4>
-            <div className="text-xs text-emerald-700 space-y-1">
-              <div><strong>MELD Score:</strong> Model for End-Stage Liver Disease (6-40 scale, higher = worse)</div>
-              <div><strong>Components:</strong> Bilirubin, Creatinine, INR (with clinical bounds applied)</div>
-              <div><strong>MELD-Na:</strong> Includes sodium adjustment for more accurate assessment</div>
-              <div><strong>Clinical Bounds:</strong> Bilirubin (1-20), Creatinine (0.8-3.0), INR (1-3), Sodium (125-137)</div>
+            <div className="flex items-center space-x-3">
+              <div className="w-5 h-5 bg-gray-100 border-2 border-gray-300 rounded-md"></div>
+              <span className="text-sm text-gray-700">🆕 Discovered Parameters</span>
             </div>
           </div>
         </div>
@@ -625,8 +495,8 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
               <div>Normalized parameters: {availableParameters.length}</div>
               <div>Date groups: {dateGroups.length}</div>
               <div>Parameters shown: {parametersToShow.length}</div>
-              <div>Known parameters: {LIVER_CIRRHOSIS_PARAMETERS.length}</div>
-              <div>Discovered parameters: {availableParameters.filter(p => !LIVER_CIRRHOSIS_PARAMETERS.map(lp => lp.name).includes(p)).length}</div>
+              <div>Known parameters: {LAB_PARAMETERS.length}</div>
+              <div>Discovered parameters: {availableParameters.filter(p => !LAB_PARAMETERS.map(lp => lp.name).includes(p)).length}</div>
             </div>
             
             {/* Show normalized metric mapping */}
@@ -636,7 +506,7 @@ export function ConsolidatedLabReport({ labData }: ConsolidatedLabReportProps) {
                 {availableParameters.slice(0, 20).map(param => (
                   <div key={param} className="mb-1">
                     <span className="font-medium">{param}</span>
-                    {LIVER_CIRRHOSIS_PARAMETERS.find(lp => lp.name === param) ? 
+                    {LAB_PARAMETERS.find(lp => lp.name === param) ? 
                       <span className="text-green-600 ml-2">✓ Known</span> : 
                       <span className="text-blue-600 ml-2">🔍 Discovered</span>
                     }
