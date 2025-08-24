@@ -79,12 +79,56 @@ interface TransplantFormData {
 export default function AdvancedMedicalDashboard({ charts, patientProfile = {} }: AdvancedMedicalDashboardProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'child-pugh' | 'transplant' | 'fibrosis'>('overview');
   const [isClient, setIsClient] = useState(false);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   
-  // Child-Pugh form state
+  // Child-Pugh form state (will be populated from profile)
   const [childPughForm, setChildPughForm] = useState<ChildPughFormData>({
     ascites: 'none',
     encephalopathy: 'none'
   });
+
+  // Load profile data on component mount
+  useEffect(() => {
+    loadProfileData();
+  }, []);
+
+  const loadProfileData = async () => {
+    try {
+      const response = await fetch('/api/profile');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.profile) {
+          setProfileData(data.profile);
+          // Auto-populate Child-Pugh form from profile
+          const profileAscites = data.profile.ascites === 'mild' ? 'slight' : data.profile.ascites || 'none';
+          setChildPughForm({
+            ascites: profileAscites,
+            encephalopathy: data.profile.encephalopathy || 'none'
+          });
+          
+          // Auto-calculate if we have complete data
+          console.log('🔄 Profile loaded, checking for auto-calculation...');
+          console.log('Profile ascites:', data.profile.ascites, 'mapped to:', profileAscites);
+          console.log('Profile encephalopathy:', data.profile.encephalopathy);
+          
+          // Check if we can auto-calculate Child-Pugh
+          if ((data.profile.ascites && data.profile.ascites !== 'none') || 
+              (data.profile.encephalopathy && data.profile.encephalopathy !== 'none')) {
+            console.log('✅ Profile has clinical data, enabling auto-calculation');
+            setTimeout(() => {
+              setShowResults(true);
+              console.log('✅ Auto-calculation enabled for Child-Pugh');
+            }, 1000);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load profile data:', error);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
   
   // Calculation state
   const [isCalculating, setIsCalculating] = useState(false);
@@ -148,14 +192,21 @@ export default function AdvancedMedicalDashboard({ charts, patientProfile = {} }
   const childPughResult = useMemo(() => {
     console.log('🔄 Child-Pugh calculation useMemo triggered');
     console.log('isClient:', isClient, 'showResults:', showResults);
+    console.log('profileData:', profileData);
+    console.log('childPughForm:', childPughForm);
     
     if (!isClient) {
       console.log('❌ Calculation skipped: isClient =', isClient);
       return null;
     }
     
-    if (!showResults) {
-      console.log('❌ Calculation skipped: showResults =', showResults);
+    // Auto-calculate if we have profile data with clinical assessments
+    const hasProfileClinicalData = profileData && 
+      (profileData.ascites && profileData.ascites !== 'none') ||
+      (profileData.encephalopathy && profileData.encephalopathy !== 'none');
+    
+    if (!showResults && !hasProfileClinicalData) {
+      console.log('❌ Calculation skipped: showResults =', showResults, 'hasProfileClinicalData =', hasProfileClinicalData);
       return null;
     }
     
@@ -411,15 +462,33 @@ export default function AdvancedMedicalDashboard({ charts, patientProfile = {} }
                 </label>
                 <select 
                   value={childPughForm.ascites}
-                  onChange={(e) => setChildPughForm(prev => ({ 
-                    ...prev, 
-                    ascites: e.target.value as 'none' | 'slight' | 'moderate' 
-                  }))}
+                  onChange={async (e) => {
+                    const newValue = e.target.value as 'none' | 'slight' | 'moderate';
+                    setChildPughForm(prev => ({ 
+                      ...prev, 
+                      ascites: newValue
+                    }));
+                    
+                    // Save to profile immediately
+                    try {
+                      await fetch('/api/profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                          ...profileData, 
+                          ascites: newValue === 'slight' ? 'mild' : newValue 
+                        })
+                      });
+                      console.log('✅ Ascites saved to profile:', newValue);
+                    } catch (error) {
+                      console.error('Failed to save ascites to profile:', error);
+                    }
+                  }}
                   className="w-full p-2 border border-gray-300 rounded-md"
                 >
-                  <option value="none">None</option>
-                  <option value="slight">Slight (controlled with diuretics)</option>
-                  <option value="moderate">Moderate (despite diuretics)</option>
+                  <option value="none">None (1 point)</option>
+                  <option value="slight">Mild/Controlled (2 points)</option>
+                  <option value="moderate">Moderate/Refractory (3 points)</option>
                 </select>
               </div>
 
@@ -429,15 +498,33 @@ export default function AdvancedMedicalDashboard({ charts, patientProfile = {} }
                 </label>
                 <select 
                   value={childPughForm.encephalopathy}
-                  onChange={(e) => setChildPughForm(prev => ({ 
-                    ...prev, 
-                    encephalopathy: e.target.value as 'none' | 'grade1-2' | 'grade3-4' 
-                  }))}
+                  onChange={async (e) => {
+                    const newValue = e.target.value as 'none' | 'grade1-2' | 'grade3-4';
+                    setChildPughForm(prev => ({ 
+                      ...prev, 
+                      encephalopathy: newValue
+                    }));
+                    
+                    // Save to profile immediately
+                    try {
+                      await fetch('/api/profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                          ...profileData, 
+                          encephalopathy: newValue 
+                        })
+                      });
+                      console.log('✅ Encephalopathy saved to profile:', newValue);
+                    } catch (error) {
+                      console.error('Failed to save encephalopathy to profile:', error);
+                    }
+                  }}
                   className="w-full p-2 border border-gray-300 rounded-md"
                 >
-                  <option value="none">None</option>
-                  <option value="grade1-2">Grade 1-2 (Mild-Moderate)</option>
-                  <option value="grade3-4">Grade 3-4 (Severe)</option>
+                  <option value="none">None (1 point)</option>
+                  <option value="grade1-2">Grade 1-2 (Mild-Moderate) (2 points)</option>
+                  <option value="grade3-4">Grade 3-4 (Severe) (3 points)</option>
                 </select>
               </div>
 

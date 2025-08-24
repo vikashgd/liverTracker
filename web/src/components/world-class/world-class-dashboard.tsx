@@ -5,6 +5,7 @@ import { HeroHealthScore } from './hero-health-score';
 import { PremiumMetricCard, CriticalPremiumCard, HighPriorityCard } from './premium-metric-card';
 import { CanonicalMetric } from '@/lib/metrics';
 import { calculateMELD, MELDParameters } from '@/lib/meld-calculator';
+import { formatMedicalValue } from '@/lib/medical-display-formatter';
 
 interface SeriesPoint {
   date: string;
@@ -229,8 +230,16 @@ export function WorldClassDashboard({ charts }: WorldClassDashboardProps) {
                       <div className={`text-4xl font-bold mb-2 ${
                         isNormal ? 'text-green-600' : 'text-red-600'
                       }`}>
-                        {latestData.value} 
-                        <span className="text-xl text-gray-500 ml-1">{chart.unit}</span>
+                        {(() => {
+                          const formatted = formatMedicalValue(chart.title, latestData.value, chart.unit);
+                          return formatted.displayValue;
+                        })()} 
+                        <span className="text-xl text-gray-500 ml-1">
+                          {(() => {
+                            const formatted = formatMedicalValue(chart.title, latestData.value, chart.unit);
+                            return formatted.displayUnit;
+                          })()}
+                        </span>
                       </div>
                       
                       {/* Status Indicator */}
@@ -318,8 +327,16 @@ export function WorldClassDashboard({ charts }: WorldClassDashboardProps) {
                       <div className={`text-4xl font-bold mb-2 ${
                         isNormal ? 'text-green-600' : 'text-purple-600'
                       }`}>
-                        {latestData.value} 
-                        <span className="text-xl text-gray-500 ml-1">{chart.unit}</span>
+                        {(() => {
+                          const formatted = formatMedicalValue(chart.title, latestData.value, chart.unit);
+                          return formatted.displayValue;
+                        })()} 
+                        <span className="text-xl text-gray-500 ml-1">
+                          {(() => {
+                            const formatted = formatMedicalValue(chart.title, latestData.value, chart.unit);
+                            return formatted.displayUnit;
+                          })()}
+                        </span>
                       </div>
                       
                       {/* Status Indicator */}
@@ -404,8 +421,16 @@ export function WorldClassDashboard({ charts }: WorldClassDashboardProps) {
                       <div className={`text-4xl font-bold mb-2 ${
                         isNormal ? 'text-green-600' : 'text-blue-600'
                       }`}>
-                        {latestData.value} 
-                        <span className="text-xl text-gray-500 ml-1">{chart.unit}</span>
+                        {(() => {
+                          const formatted = formatMedicalValue(chart.title, latestData.value, chart.unit);
+                          return formatted.displayValue;
+                        })()} 
+                        <span className="text-xl text-gray-500 ml-1">
+                          {(() => {
+                            const formatted = formatMedicalValue(chart.title, latestData.value, chart.unit);
+                            return formatted.displayUnit;
+                          })()}
+                        </span>
                       </div>
                       
                       {/* Status Indicator */}

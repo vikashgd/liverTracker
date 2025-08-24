@@ -1,0 +1,783 @@
+"use client";
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { User, Heart, Stethoscope, Phone, Settings, CheckCircle, Clock, AlertTriangle, Activity } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface PatientProfile {
+  id?: string;
+  // Basic Demographics
+  dateOfBirth?: string;
+  gender?: 'male' | 'female' | 'other';
+  height?: number; // cm
+  weight?: number; // kg
+  
+  // Clinical Information for MELD 3.0
+  onDialysis: boolean;
+  dialysisSessionsPerWeek?: number;
+  dialysisStartDate?: string;
+  dialysisType?: 'hemodialysis' | 'peritoneal' | 'other';
+  
+  // Child-Pugh Clinical Assessment
+  ascites?: 'none' | 'mild' | 'moderate';
+  encephalopathy?: 'none' | 'grade1-2' | 'grade3-4';
+  
+  // Medical History
+  liverDiseaseType?: 'viral_hepatitis' | 'alcoholic' | 'nash' | 'autoimmune' | 'other';
+  diagnosisDate?: string;
+  transplantCandidate: boolean;
+  transplantListDate?: string;
+  
+  // Lifestyle
+  alcoholUse?: 'never' | 'former' | 'current_light' | 'current_moderate' | 'current_heavy';
+  smokingStatus?: 'never' | 'former' | 'current';
+  
+  // Emergency Contact
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
+  
+  // Healthcare Providers
+  primaryPhysician?: string;
+  hepatologist?: string;
+  transplantCenter?: string;
+  
+  // Preferences
+  preferredUnits: 'US' | 'International';
+  timezone: string;
+}
+
+const defaultProfile: PatientProfile = {
+  onDialysis: false,
+  transplantCandidate: false,
+  preferredUnits: 'US',
+  timezone: 'UTC',
+  ascites: 'none',
+  encephalopathy: 'none'
+};
+
+// Debounce utility for auto-save
+function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
+  let timeout: NodeJS.Timeout;
+  return ((...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  }) as T;
+}
+
+export function PatientProfileForm() {
+  const { data: session } = useSession();
+  const [profile, setProfile] = useState<PatientProfile>(defaultProfile);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Load existing profile
+  useEffect(() => {
+    if (session?.user?.email) {
+      loadProfile();
+    }
+  }, [session]);
+
+  const loadProfile = async () => {
+    try {
+      const response = await fetch('/api/profile');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.profile) {
+          setProfile({ ...defaultProfile, ...data.profile });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Auto-save with debounce
+  const debouncedSave = useCallback(
+    debounce(async (profileData: PatientProfile) => {
+      if (!hasChanges) return;
+      
+      setSaving(true);
+      setError(null);
+      
+      try {
+        const response = await fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profileData)
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save profile');
+        }
+
+        setLastSaved(new Date());
+        setHasChanges(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to save profile');
+      } finally {
+        setSaving(false);
+      }
+    }, 1500),
+    [hasChanges]
+  );
+
+  // Update profile and trigger auto-save
+  const updateProfile = (updates: Partial<PatientProfile>) => {
+    const newProfile = { ...profile, ...updates };
+    setProfile(newProfile);
+    setHasChanges(true);
+    debouncedSave(newProfile);
+  };
+
+  const calculateAge = () => {
+    if (!profile.dateOfBirth) return null;
+    const today = new Date();
+    const birthDate = new Date(profile.dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const calculateBMI = () => {
+    if (!profile.height || !profile.weight) return null;
+    const heightInM = profile.height / 100;
+    return (profile.weight / (heightInM * heightInM)).toFixed(1);
+  };
+
+  const getCompletionPercentage = () => {
+    const fields = [
+      'dateOfBirth', 'gender', 'height', 'weight',
+      'liverDiseaseType', 'diagnosisDate',
+      'ascites', 'encephalopathy',
+      'emergencyContactName', 'emergencyContactPhone',
+      'primaryPhysician'
+    ];
+    
+    const completed = fields.filter(field => {
+      const value = profile[field as keyof PatientProfile];
+      return value !== undefined && value !== null && value !== '';
+    }).length;
+    return Math.round((completed / fields.length) * 100);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-medical-neutral-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-medical-primary-600 mx-auto"></div>
+          <p className="text-medical-neutral-600 mt-4">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Header matching dashboard style */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-8 border border-indigo-200"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+              <User className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Patient Profile</h1>
+              <p className="text-gray-600 mt-1">
+                Complete your profile for accurate MELD 3.0 and Child-Pugh calculations
+              </p>
+            </div>
+          </div>
+          
+          <div className="text-right">
+            <div className="text-2xl font-bold text-indigo-600">
+              {getCompletionPercentage()}%
+            </div>
+            <div className="text-sm text-gray-600">Complete</div>
+            <div className="w-24 h-2 bg-gray-200 rounded-full mt-2">
+              <div 
+                className="h-2 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-full transition-all duration-500"
+                style={{ width: `${getCompletionPercentage()}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Auto-save Status */}
+      <AnimatePresence>
+        {saving && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex items-center space-x-2 text-indigo-600 bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-200"
+          >
+            <Clock className="w-4 h-4 animate-spin" />
+            <span className="text-sm font-medium">Saving changes...</span>
+          </motion.div>
+        )}
+        
+        {lastSaved && !saving && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex items-center space-x-2 text-green-600 bg-green-50 px-4 py-2 rounded-lg border border-green-200"
+          >
+            <CheckCircle className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              Saved {lastSaved.toLocaleTimeString()}
+            </span>
+          </motion.div>
+        )}
+        
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex items-center space-x-2 text-red-600 bg-red-50 px-4 py-2 rounded-lg border border-red-200"
+          >
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-sm font-medium">{error}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <div className="space-y-6">
+        
+        {/* Demographics & Vitals */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="bg-white shadow-sm border border-gray-200">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <User className="w-4 h-4 text-indigo-600" />
+                </div>
+                <span>Demographics & Vitals</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div>
+                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={profile.dateOfBirth || ''}
+                    onChange={(e) => updateProfile({ dateOfBirth: e.target.value })}
+                    className="mt-1"
+                  />
+                  {calculateAge() && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Age: {calculateAge()} years
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="gender">Gender</Label>
+                  <Select 
+                    value={profile.gender || ''} 
+                    onValueChange={(value) => updateProfile({ gender: value as any })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Required for MELD 3.0
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="height">Height (cm)</Label>
+                  <Input
+                    id="height"
+                    type="number"
+                    value={profile.height || ''}
+                    onChange={(e) => updateProfile({ height: parseFloat(e.target.value) || undefined })}
+                    placeholder="170"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="weight">Weight (kg)</Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    value={profile.weight || ''}
+                    onChange={(e) => updateProfile({ weight: parseFloat(e.target.value) || undefined })}
+                    placeholder="70"
+                    className="mt-1"
+                  />
+                  {calculateBMI() && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      BMI: {calculateBMI()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Clinical Information */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="bg-white shadow-sm border border-gray-200">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Stethoscope className="w-4 h-4 text-green-600" />
+                </div>
+                <span>Clinical Information</span>
+                <Badge variant="outline" className="text-xs">
+                  Critical for MELD 3.0 & Child-Pugh
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Dialysis Status */}
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center space-x-3 mb-4">
+                  <Checkbox
+                    id="onDialysis"
+                    checked={profile.onDialysis}
+                    onCheckedChange={(checked) => updateProfile({ onDialysis: !!checked })}
+                  />
+                  <Label htmlFor="onDialysis" className="font-medium">
+                    Patient is currently on dialysis
+                  </Label>
+                </div>
+                
+                {profile.onDialysis && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                      <Label htmlFor="dialysisType">Dialysis Type</Label>
+                      <Select 
+                        value={profile.dialysisType || ''} 
+                        onValueChange={(value) => updateProfile({ dialysisType: value as any })}
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hemodialysis">Hemodialysis</SelectItem>
+                          <SelectItem value="peritoneal">Peritoneal Dialysis</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="dialysisSessionsPerWeek">Sessions per Week</Label>
+                      <Input
+                        id="dialysisSessionsPerWeek"
+                        type="number"
+                        min="1"
+                        max="7"
+                        value={profile.dialysisSessionsPerWeek || ''}
+                        onChange={(e) => updateProfile({ dialysisSessionsPerWeek: parseInt(e.target.value) || undefined })}
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-yellow-600 mt-1">
+                        ≥2 sessions affects MELD calculation
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="dialysisStartDate">Start Date</Label>
+                      <Input
+                        id="dialysisStartDate"
+                        type="date"
+                        value={profile.dialysisStartDate || ''}
+                        onChange={(e) => updateProfile({ dialysisStartDate: e.target.value })}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Child-Pugh Clinical Assessment */}
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <h4 className="font-medium text-purple-800 mb-4 flex items-center">
+                  <Heart className="w-4 h-4 mr-2" />
+                  Child-Pugh Clinical Assessment
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="ascites">Ascites</Label>
+                    <Select 
+                      value={profile.ascites || 'none'} 
+                      onValueChange={(value) => updateProfile({ ascites: value as any })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None (1 point)</SelectItem>
+                        <SelectItem value="mild">Mild/Controlled (2 points)</SelectItem>
+                        <SelectItem value="moderate">Moderate/Refractory (3 points)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-purple-600 mt-1">
+                      Fluid accumulation in abdomen
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="encephalopathy">Hepatic Encephalopathy</Label>
+                    <Select 
+                      value={profile.encephalopathy || 'none'} 
+                      onValueChange={(value) => updateProfile({ encephalopathy: value as any })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None (1 point)</SelectItem>
+                        <SelectItem value="grade1-2">Grade 1-2/Controlled (2 points)</SelectItem>
+                        <SelectItem value="grade3-4">Grade 3-4/Refractory (3 points)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-purple-600 mt-1">
+                      Cognitive impairment due to liver dysfunction
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transplant Status */}
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="transplantCandidate"
+                  checked={profile.transplantCandidate}
+                  onCheckedChange={(checked) => updateProfile({ transplantCandidate: !!checked })}
+                />
+                <Label htmlFor="transplantCandidate" className="font-medium">
+                  Liver transplant candidate
+                </Label>
+              </div>
+
+              {profile.transplantCandidate && (
+                <div>
+                  <Label htmlFor="transplantListDate">Date Added to List</Label>
+                  <Input
+                    id="transplantListDate"
+                    type="date"
+                    value={profile.transplantListDate || ''}
+                    onChange={(e) => updateProfile({ transplantListDate: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+          {/* Medical History */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="medical-card-primary">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                    <Heart className="w-4 h-4 text-red-600" />
+                  </div>
+                  <span>Medical History</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="liverDiseaseType">Liver Disease Type</Label>
+                    <Select 
+                      value={profile.liverDiseaseType || ''} 
+                      onValueChange={(value) => updateProfile({ liverDiseaseType: value as any })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select disease type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="viral_hepatitis">Viral Hepatitis</SelectItem>
+                        <SelectItem value="alcoholic">Alcoholic Liver Disease</SelectItem>
+                        <SelectItem value="nash">NASH/NAFLD</SelectItem>
+                        <SelectItem value="autoimmune">Autoimmune</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="diagnosisDate">Diagnosis Date</Label>
+                    <Input
+                      id="diagnosisDate"
+                      type="date"
+                      value={profile.diagnosisDate || ''}
+                      onChange={(e) => updateProfile({ diagnosisDate: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="alcoholUse">Alcohol Use</Label>
+                    <Select 
+                      value={profile.alcoholUse || ''} 
+                      onValueChange={(value) => updateProfile({ alcoholUse: value as any })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select alcohol use" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="never">Never</SelectItem>
+                        <SelectItem value="former">Former</SelectItem>
+                        <SelectItem value="current_light">Current - Light</SelectItem>
+                        <SelectItem value="current_moderate">Current - Moderate</SelectItem>
+                        <SelectItem value="current_heavy">Current - Heavy</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="smokingStatus">Smoking Status</Label>
+                    <Select 
+                      value={profile.smokingStatus || ''} 
+                      onValueChange={(value) => updateProfile({ smokingStatus: value as any })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select smoking status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="never">Never</SelectItem>
+                        <SelectItem value="former">Former</SelectItem>
+                        <SelectItem value="current">Current</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Healthcare Providers & Emergency Contact */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Card className="medical-card-primary">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Phone className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <span>Healthcare Team & Emergency Contact</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="primaryPhysician">Primary Physician</Label>
+                    <Input
+                      id="primaryPhysician"
+                      value={profile.primaryPhysician || ''}
+                      onChange={(e) => updateProfile({ primaryPhysician: e.target.value })}
+                      placeholder="Dr. Smith"
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="hepatologist">Hepatologist</Label>
+                    <Input
+                      id="hepatologist"
+                      value={profile.hepatologist || ''}
+                      onChange={(e) => updateProfile({ hepatologist: e.target.value })}
+                      placeholder="Dr. Johnson"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="transplantCenter">Transplant Center</Label>
+                  <Input
+                    id="transplantCenter"
+                    value={profile.transplantCenter || ''}
+                    onChange={(e) => updateProfile({ transplantCenter: e.target.value })}
+                    placeholder="City Medical Center"
+                    className="mt-1"
+                  />
+                </div>
+
+                <div className="border-t pt-6">
+                  <h4 className="font-medium text-medical-neutral-900 mb-4">Emergency Contact</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="emergencyContactName">Name</Label>
+                      <Input
+                        id="emergencyContactName"
+                        value={profile.emergencyContactName || ''}
+                        onChange={(e) => updateProfile({ emergencyContactName: e.target.value })}
+                        placeholder="Contact name"
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="emergencyContactPhone">Phone</Label>
+                      <Input
+                        id="emergencyContactPhone"
+                        type="tel"
+                        value={profile.emergencyContactPhone || ''}
+                        onChange={(e) => updateProfile({ emergencyContactPhone: e.target.value })}
+                        placeholder="(555) 123-4567"
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="emergencyContactRelation">Relationship</Label>
+                      <Input
+                        id="emergencyContactRelation"
+                        value={profile.emergencyContactRelation || ''}
+                        onChange={(e) => updateProfile({ emergencyContactRelation: e.target.value })}
+                        placeholder="Spouse, Child, etc."
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Preferences */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Card className="medical-card-primary">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Settings className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <span>Preferences</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="preferredUnits">Preferred Units</Label>
+                    <Select 
+                      value={profile.preferredUnits} 
+                      onValueChange={(value) => updateProfile({ preferredUnits: value as any })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="US">US Units (mg/dL, etc.)</SelectItem>
+                        <SelectItem value="International">International Units (mmol/L, etc.)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="timezone">Timezone</Label>
+                    <Select 
+                      value={profile.timezone} 
+                      onValueChange={(value) => updateProfile({ timezone: value })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="UTC">UTC</SelectItem>
+                        <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                        <SelectItem value="America/Chicago">Central Time</SelectItem>
+                        <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                        <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Profile Impact */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <Card className="bg-gradient-to-br from-medical-primary-50 to-blue-50 border-medical-primary-200">
+              <CardContent className="pt-6">
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 bg-medical-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-5 h-5 text-medical-primary-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-medical-primary-900 mb-2">
+                      How This Improves Your Experience
+                    </h3>
+                    <div className="space-y-2 text-sm text-medical-primary-800">
+                      <p>• <strong>MELD 3.0 Accuracy:</strong> Gender and dialysis status provide the most current medical standard</p>
+                      <p>• <strong>Personalized Insights:</strong> Disease type and history enable tailored recommendations</p>
+                      <p>• <strong>Emergency Preparedness:</strong> Contact information readily available when needed</p>
+                      <p>• <strong>Seamless Experience:</strong> Preferred units and timezone for consistent data display</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+}

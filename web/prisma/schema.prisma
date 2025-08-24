@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -16,16 +10,50 @@ datasource db {
 
 model User {
   id            String          @id @default(cuid())
-  name          String?
   email         String?         @unique
-  emailVerified DateTime?
-  image         String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+  emailVerified DateTime?
+  image         String?
+  name          String?
   accounts      Account[]
-  sessions      Session[]
+  profile       PatientProfile?
   reportFiles   ReportFile[]
+  sessions      Session[]
   timeline      TimelineEvent[]
+}
+
+model PatientProfile {
+  id                       String    @id @default(cuid())
+  userId                   String    @unique
+  dateOfBirth              DateTime?
+  gender                   String?
+  height                   Float?
+  weight                   Float?
+  onDialysis               Boolean   @default(false)
+  dialysisSessionsPerWeek  Int?
+  dialysisStartDate        DateTime?
+  dialysisType             String?
+  liverDiseaseType         String?
+  diagnosisDate            DateTime?
+  transplantCandidate      Boolean   @default(false)
+  transplantListDate       DateTime?
+  alcoholUse               String?
+  smokingStatus            String?
+  emergencyContactName     String?
+  emergencyContactPhone    String?
+  emergencyContactRelation String?
+  primaryPhysician         String?
+  hepatologist             String?
+  transplantCenter         String?
+  preferredUnits           String    @default("US")
+  timezone                 String    @default("UTC")
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+  completedAt              DateTime?
+  ascites                  String?   @default("none")
+  encephalopathy           String?   @default("none")
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Account {
@@ -34,15 +62,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -64,38 +91,38 @@ model VerificationToken {
 }
 
 model ReportFile {
-  id             String            @id @default(cuid())
-  userId         String
-  user           User              @relation(fields: [userId], references: [id])
-  objectKey      String
-  contentType    String
-  reportType     String?
-  reportDate     DateTime?
-  createdAt      DateTime          @default(now())
-  extractedJson  Json?
-  metrics        ExtractedMetric[]
-  events         TimelineEvent[]
+  id            String            @id @default(cuid())
+  userId        String
+  objectKey     String
+  contentType   String
+  reportType    String?
+  reportDate    DateTime?
+  createdAt     DateTime          @default(now())
+  extractedJson Json?
+  metrics       ExtractedMetric[]
+  user          User              @relation(fields: [userId], references: [id])
+  events        TimelineEvent[]
 }
 
 model ExtractedMetric {
-  id           String      @id @default(cuid())
-  reportId     String
-  report       ReportFile  @relation(fields: [reportId], references: [id])
-  name         String
-  value        Float?
-  textValue    String?
-  unit         String?
-  category     String?
-  createdAt    DateTime    @default(now())
+  id        String     @id @default(cuid())
+  reportId  String
+  name      String
+  value     Float?
+  unit      String?
+  createdAt DateTime   @default(now())
+  category  String?
+  textValue String?
+  report    ReportFile @relation(fields: [reportId], references: [id])
 }
 
 model TimelineEvent {
-  id         String     @id @default(cuid())
+  id         String      @id @default(cuid())
   userId     String
-  user       User       @relation(fields: [userId], references: [id])
   type       String
   reportId   String?
-  report     ReportFile? @relation(fields: [reportId], references: [id])
   details    Json?
-  occurredAt DateTime   @default(now())
+  occurredAt DateTime    @default(now())
+  report     ReportFile? @relation(fields: [reportId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
 }

@@ -32,19 +32,54 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
   const VISITS_PER_PAGE = 50;
 
   const getReportCategory = (reportType: string | null) => {
-    if (!reportType) return { type: 'Other', color: 'amber', icon: '📋', bgColor: 'bg-amber-50', borderColor: 'border-amber-200', textColor: 'text-amber-700' };
+    if (!reportType) return { 
+      type: 'Other', 
+      icon: '📋', 
+      bgColor: 'bg-gradient-to-br from-amber-50 to-orange-50', 
+      borderColor: 'border-amber-200', 
+      textColor: 'text-amber-700',
+      badgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
+    };
     
     const type = reportType.toLowerCase();
     if (type.includes('lab') || type.includes('blood') || type.includes('metabolic') || type.includes('chemistry')) {
-      return { type: 'Laboratory', color: 'blue', icon: '🧪', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', textColor: 'text-blue-700' };
+      return { 
+        type: 'Laboratory', 
+        icon: '🧪', 
+        bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50', 
+        borderColor: 'border-blue-200', 
+        textColor: 'text-blue-700',
+        badgeColor: 'bg-blue-100 text-blue-800 border-blue-200'
+      };
     }
     if (type.includes('ct') || type.includes('mri') || type.includes('ultrasound') || type.includes('x-ray') || type.includes('scan')) {
-      return { type: 'Imaging', color: 'purple', icon: '🏥', bgColor: 'bg-purple-50', borderColor: 'border-purple-200', textColor: 'text-purple-700' };
+      return { 
+        type: 'Imaging', 
+        icon: '🏥', 
+        bgColor: 'bg-gradient-to-br from-purple-50 to-violet-50', 
+        borderColor: 'border-purple-200', 
+        textColor: 'text-purple-700',
+        badgeColor: 'bg-purple-100 text-purple-800 border-purple-200'
+      };
     }
     if (type.includes('clinical') || type.includes('consultation') || type.includes('visit') || type.includes('note')) {
-      return { type: 'Clinical', color: 'green', icon: '👩‍⚕️', bgColor: 'bg-green-50', borderColor: 'border-green-200', textColor: 'text-green-700' };
+      return { 
+        type: 'Clinical', 
+        icon: '👩‍⚕️', 
+        bgColor: 'bg-gradient-to-br from-emerald-50 to-green-50', 
+        borderColor: 'border-emerald-200', 
+        textColor: 'text-emerald-700',
+        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200'
+      };
     }
-    return { type: 'Other', color: 'amber', icon: '📋', bgColor: 'bg-amber-50', borderColor: 'border-amber-200', textColor: 'text-amber-700' };
+    return { 
+      type: 'Other', 
+      icon: '📋', 
+      bgColor: 'bg-gradient-to-br from-amber-50 to-orange-50', 
+      borderColor: 'border-amber-200', 
+      textColor: 'text-amber-700',
+      badgeColor: 'bg-amber-100 text-amber-800 border-amber-200'
+    };
   };
 
   // Smart visit grouping: Group reports within 2-3 days of each other
@@ -214,119 +249,162 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
   const getStatusIndicator = (report: Report) => {
     const daysSinceUpload = Math.floor((new Date().getTime() - new Date(report.createdAt).getTime()) / (1000 * 60 * 60 * 24));
     
-    if (daysSinceUpload <= 7) return { status: 'New', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
-    if (report._count.metrics > 0) return { status: 'Processed', color: 'bg-blue-50 text-blue-700 border-blue-200' };
-    return { status: 'Archived', color: 'bg-gray-50 text-gray-600 border-gray-200' };
+    if (daysSinceUpload <= 7) return { 
+      status: 'New', 
+      color: 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 border-emerald-300',
+      icon: '✨'
+    };
+    if (report._count.metrics > 0) return { 
+      status: 'Processed', 
+      color: 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border-blue-300',
+      icon: '✅'
+    };
+    return { 
+      status: 'Archived', 
+      color: 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700 border-gray-300',
+      icon: '📁'
+    };
   };
 
   const uniqueTypes = [...new Set(reports.map(r => getReportCategory(r.reportType).type))];
 
   return (
-    <div className="min-h-screen bg-medical-neutral-50">
-      <div className="medical-layout-container py-8">
-        {/* Medical Header */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Beautiful Header */}
         <div className="mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-medical-neutral-900 mb-2">
-                Medical Records
-              </h1>
-              <p className="text-lg text-medical-neutral-600">
-                Visit-based chronological view of your healthcare journey
-              </p>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+            <div className="text-center lg:text-left">
+              <div className="inline-flex items-center space-x-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <span className="text-2xl text-white">📋</span>
+                </div>
+                <div>
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
+                    Medical Records
+                  </h1>
+                  <p className="text-lg text-gray-600 mt-1">
+                    Your complete healthcare journey, beautifully organized
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="mt-4 lg:mt-0 flex items-center space-x-3">
+            <div className="mt-6 lg:mt-0 flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
               <Link 
                 href="/consolidated-lab-report" 
-                className="btn-secondary flex items-center space-x-2"
+                className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm hover:shadow-md"
               >
-                <span>📊</span>
-                <span>Consolidated Lab Report</span>
+                <span className="mr-2">📊</span>
+                <span>Lab Analytics</span>
               </Link>
               <Link 
                 href="/" 
-                className="btn-primary flex items-center space-x-2"
+                className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
-                <span>📄</span>
+                <span className="mr-2">📄</span>
                 <span>Upload Report</span>
               </Link>
             </div>
           </div>
 
-          {/* Clinical Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="medical-card-metric">
-              <div className="flex items-center justify-between mb-2">
-                <div className="metric-label">Total Visits</div>
-                <span className="text-2xl">📅</span>
+          {/* Beautiful Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                  <span className="text-xl text-white">📅</span>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-gray-900">{visits.length}</div>
+                  <div className="text-sm text-gray-500">Total Visits</div>
+                </div>
               </div>
-              <div className="metric-value text-medical-primary-600">{visits.length}</div>
-              <div className="text-xs text-medical-neutral-500 mt-1">{reports.length} reports</div>
+              <div className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full inline-block">
+                {reports.length} reports total
+              </div>
             </div>
             
-            <div className="medical-card-metric">
-              <div className="flex items-center justify-between mb-2">
-                <div className="metric-label">Recent Activity</div>
-                <span className="text-2xl">🕐</span>
+            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center">
+                  <span className="text-xl text-white">🕐</span>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {visits.filter(v => {
+                      const daysSince = (new Date().getTime() - v.endDate.getTime()) / (1000 * 60 * 60 * 24);
+                      return daysSince <= 30;
+                    }).length}
+                  </div>
+                  <div className="text-sm text-gray-500">Recent Activity</div>
+                </div>
               </div>
-              <div className="metric-value text-emerald-600">
-                {visits.filter(v => {
-                  const daysSince = (new Date().getTime() - v.endDate.getTime()) / (1000 * 60 * 60 * 24);
-                  return daysSince <= 30;
-                }).length}
+              <div className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full inline-block">
+                Last 30 days
               </div>
-              <div className="text-xs text-medical-neutral-500 mt-1">Last 30 days</div>
             </div>
             
-            <div className="medical-card-metric">
-              <div className="flex items-center justify-between mb-2">
-                <div className="metric-label">Lab Data Points</div>
-                <span className="text-2xl">🧪</span>
+            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center">
+                  <span className="text-xl text-white">🧪</span>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {reports.reduce((sum, r) => sum + r._count.metrics, 0)}
+                  </div>
+                  <div className="text-sm text-gray-500">Lab Data Points</div>
+                </div>
               </div>
-              <div className="metric-value text-blue-600">
-                {reports.reduce((sum, r) => sum + r._count.metrics, 0)}
+              <div className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full inline-block">
+                Extracted values
               </div>
-              <div className="text-xs text-medical-neutral-500 mt-1">Extracted values</div>
             </div>
             
-            <div className="medical-card-metric">
-              <div className="flex items-center justify-between mb-2">
-                <div className="metric-label">Processing Queue</div>
-                <span className="text-2xl">⏳</span>
+            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
+                  <span className="text-xl text-white">⏳</span>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {reports.filter(r => r._count.metrics === 0).length}
+                  </div>
+                  <div className="text-sm text-gray-500">Processing Queue</div>
+                </div>
               </div>
-              <div className="metric-value text-amber-600">
-                {reports.filter(r => r._count.metrics === 0).length}
+              <div className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full inline-block">
+                Pending analysis
               </div>
-              <div className="text-xs text-medical-neutral-500 mt-1">Pending analysis</div>
             </div>
           </div>
         </div>
 
-        {/* Clinical Search & Filters */}
-        <div className="medical-card-primary mb-8">
-          <div className="space-y-4">
+        {/* Modern Search & Filters */}
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mb-8">
+          <div className="space-y-6">
             {/* Search Bar */}
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="text-medical-neutral-400">🔍</span>
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <span className="text-gray-400 text-lg">🔍</span>
               </div>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search medical records by type, keywords, or file name..."
-                className="w-full pl-10 pr-4 py-3 border border-medical-neutral-300 rounded-lg focus:ring-2 focus:ring-medical-primary-500 focus:border-transparent text-medical-neutral-900 placeholder-medical-neutral-500"
+                className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500 bg-gray-50 focus:bg-white transition-all duration-200"
               />
             </div>
 
             {/* Filter Controls */}
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center space-x-2">
-                <label className="text-sm font-medium text-medical-neutral-700">Category:</label>
+            <div className="flex flex-wrap items-center gap-6">
+              <div className="flex items-center space-x-3">
+                <label className="text-sm font-semibold text-gray-700">Category:</label>
                 <select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
-                  className="px-3 py-2 border border-medical-neutral-300 rounded-lg focus:ring-2 focus:ring-medical-primary-500 text-sm"
+                  className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-gray-50 hover:bg-white transition-all duration-200"
                 >
                   <option value="">All Categories</option>
                   {uniqueTypes.map(type => (
@@ -335,12 +413,12 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                 </select>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <label className="text-sm font-medium text-medical-neutral-700">Timeframe:</label>
+              <div className="flex items-center space-x-3">
+                <label className="text-sm font-semibold text-gray-700">Timeframe:</label>
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
-                  className="px-3 py-2 border border-medical-neutral-300 rounded-lg focus:ring-2 focus:ring-medical-primary-500 text-sm"
+                  className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-gray-50 hover:bg-white transition-all duration-200"
                 >
                   <option value="">All Time</option>
                   <option value="3m">Last 3 Months</option>
@@ -351,24 +429,24 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
 
               {/* Active Filters */}
               {(searchTerm || selectedType || selectedPeriod) && (
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-medical-neutral-500">Active filters:</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-gray-600">Active filters:</span>
                   {searchTerm && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-medical-primary-100 text-medical-primary-700">
-                      Search: {searchTerm}
-                      <button onClick={() => setSearchTerm('')} className="ml-1 text-medical-primary-500 hover:text-medical-primary-700">×</button>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border border-blue-200">
+                      🔍 Search: {searchTerm}
+                      <button onClick={() => setSearchTerm('')} className="ml-2 text-blue-600 hover:text-blue-800 font-bold">×</button>
                     </span>
                   )}
                   {selectedType && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                      Category: {selectedType}
-                      <button onClick={() => setSelectedType('')} className="ml-1 text-blue-500 hover:text-blue-700">×</button>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-purple-100 to-violet-100 text-purple-800 border border-purple-200">
+                      📂 Category: {selectedType}
+                      <button onClick={() => setSelectedType('')} className="ml-2 text-purple-600 hover:text-purple-800 font-bold">×</button>
                     </span>
                   )}
                   {selectedPeriod && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                      Time: {selectedPeriod === '3m' ? 'Last 3 Months' : selectedPeriod === '6m' ? 'Last 6 Months' : 'Last Year'}
-                      <button onClick={() => setSelectedPeriod('')} className="ml-1 text-purple-500 hover:text-purple-700">×</button>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 border border-emerald-200">
+                      📅 Time: {selectedPeriod === '3m' ? 'Last 3 Months' : selectedPeriod === '6m' ? 'Last 6 Months' : 'Last Year'}
+                      <button onClick={() => setSelectedPeriod('')} className="ml-2 text-emerald-600 hover:text-emerald-800 font-bold">×</button>
                     </span>
                   )}
                 </div>
@@ -376,15 +454,15 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
             </div>
 
             {/* Results Summary */}
-            <div className="flex items-center justify-between text-sm text-medical-neutral-600">
-              <div>
+            <div className="flex items-center justify-between text-sm">
+              <div className="text-gray-600 font-medium">
                 {visits.length === 0 
                   ? 'No visits found'
                   : `Showing ${paginatedVisits.length} of ${visits.length} visits (${filteredReports.length} reports)`
                 }
               </div>
               {totalPages > 1 && (
-                <div className="text-medical-neutral-500">
+                <div className="text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
                   Page {currentPage} of {totalPages}
                 </div>
               )}
@@ -392,127 +470,135 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
           </div>
         </div>
 
-        {/* Visit-Based Medical Records */}
+        {/* Beautiful Visit-Based Medical Records */}
         {paginatedVisits.length === 0 ? (
-          <div className="medical-card-primary text-center py-12">
-            <div className="w-16 h-16 bg-medical-neutral-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">🏥</span>
+          <div className="bg-white rounded-2xl p-12 shadow-lg border border-gray-100 text-center">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <span className="text-4xl">🏥</span>
             </div>
-            <h3 className="text-lg font-medium text-medical-neutral-900 mb-2">
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">
               No medical visits found
             </h3>
-            <p className="text-medical-neutral-600 mb-6">
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">
               {searchTerm || selectedType || selectedPeriod 
-                ? "Try adjusting your search criteria or filters"
+                ? "Try adjusting your search criteria or filters to find what you're looking for"
                 : "Upload your first medical report to begin tracking your healthcare journey"
               }
             </p>
             {!searchTerm && !selectedType && !selectedPeriod && (
-              <Link href="/" className="btn-primary">
+              <Link href="/" className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
                 <span className="mr-2">📄</span>
                 Upload Your First Report
               </Link>
             )}
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {paginatedVisits.map((visit, visitIndex) => (
-              <div key={visitIndex} className="medical-card-primary">
-                {/* Visit Header */}
-                <div className="border-b border-medical-neutral-200 pb-4 mb-6">
-                  <div className="flex items-center justify-between">
+              <div key={visitIndex} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+                {/* Beautiful Visit Header */}
+                <div className="bg-gradient-to-r from-gray-50 to-blue-50 border-b border-gray-100 p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                     <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-medical-primary-100 rounded-xl flex items-center justify-center">
-                          <span className="text-xl">📅</span>
-                        </div>
-                        <div>
-                          <h2 className="text-xl font-semibold text-medical-neutral-900">
-                            {formatDateRange(visit.startDate, visit.endDate)}
-                          </h2>
-                          <p className="text-sm text-medical-neutral-600">
-                            {visit.visitType} • {visit.reports.length} {visit.reports.length === 1 ? 'report' : 'reports'}
-                          </p>
-                        </div>
+                      <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <span className="text-2xl text-white">📅</span>
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          {formatDateRange(visit.startDate, visit.endDate)}
+                        </h2>
+                        <p className="text-gray-600 mt-1">
+                          {visit.visitType} • {visit.reports.length} {visit.reports.length === 1 ? 'report' : 'reports'}
+                        </p>
                       </div>
                     </div>
                     
-                    <div className="flex items-center space-x-3">
-                      {/* Visit Summary Badges */}
-                      <div className="flex items-center space-x-2">
-                        {[...new Set(visit.reports.map(r => getReportCategory(r.reportType).type))].map(type => {
-                          const category = getReportCategory(visit.reports.find(r => getReportCategory(r.reportType).type === type)?.reportType || null);
-                          const count = visit.reports.filter(r => getReportCategory(r.reportType).type === type).length;
-                          return (
-                            <span key={type} className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${category.bgColor} ${category.borderColor} ${category.textColor}`}>
-                              {category.icon} {count} {type}
-                            </span>
-                          );
-                        })}
-                      </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {/* Beautiful Visit Summary Badges */}
+                      {[...new Set(visit.reports.map(r => getReportCategory(r.reportType).type))].map(type => {
+                        const category = getReportCategory(visit.reports.find(r => getReportCategory(r.reportType).type === type)?.reportType || null);
+                        const count = visit.reports.filter(r => getReportCategory(r.reportType).type === type).length;
+                        return (
+                          <span key={type} className={`inline-flex items-center px-3 py-2 rounded-xl text-sm font-medium border ${category.badgeColor} shadow-sm`}>
+                            <span className="mr-2">{category.icon}</span>
+                            <span>{count} {type}</span>
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
 
-                {/* Reports in Visit */}
-                <div className="space-y-3">
+                {/* Beautiful Reports in Visit */}
+                <div className="p-6 space-y-4">
                   {visit.reports.map((report) => {
                     const category = getReportCategory(report.reportType);
                     const status = getStatusIndicator(report);
                     const reportDate = report.reportDate || report.createdAt;
 
                     return (
-                      <div key={report.id} className={`group relative border-l-4 ${category.borderColor} pl-4 py-3 hover:bg-medical-neutral-25 transition-colors rounded-r-lg`}>
+                      <div key={report.id} className="group relative bg-gray-50 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl p-4 transition-all duration-200 border border-gray-100 hover:border-blue-200 hover:shadow-md">
                         <div className="flex items-center justify-between">
                           {/* Report Info */}
                           <div className="flex items-center space-x-4 flex-1">
-                            <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${category.bgColor}`}>
-                              <span className="text-lg">{category.icon}</span>
+                            <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${category.bgColor} shadow-sm`}>
+                              <span className="text-xl">{category.icon}</span>
                             </div>
                             
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between mb-1">
-                                <h3 className="text-base font-medium text-medical-neutral-900 group-hover:text-medical-primary-600 transition-colors">
+                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
+                                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
                                   {report.reportType || 'Medical Report'}
                                 </h3>
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-sm text-medical-neutral-500">
-                                    {formatReportDate(reportDate)}
+                                <div className="flex items-center space-x-3 mt-1 sm:mt-0">
+                                  <span className="text-sm text-gray-500 bg-white px-2 py-1 rounded-lg">
+                                    📅 {formatReportDate(reportDate)}
                                   </span>
-                                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${status.color}`}>
+                                  <div className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium border ${status.color} shadow-sm`}>
+                                    <span className="mr-1">{status.icon}</span>
                                     {status.status}
                                   </div>
                                 </div>
                               </div>
                               
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-4 text-sm text-medical-neutral-600">
-                                  <span className="truncate max-w-xs">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+                                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                  <span className="inline-flex items-center bg-white px-3 py-1 rounded-lg border border-gray-200">
                                     📁 {report.objectKey?.split('/').pop() || 'Unknown file'}
                                   </span>
                                   {report._count.metrics > 0 && (
-                                    <span className="inline-flex items-center">
-                                      <span className="w-2 h-2 bg-green-400 rounded-full mr-1"></span>
-                                      {report._count.metrics} values
+                                    <span className="inline-flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-lg border border-green-200">
+                                      <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                      {report._count.metrics} values extracted
                                     </span>
                                   )}
                                 </div>
                                 
-                                {/* Actions */}
+                                {/* Beautiful Action Buttons */}
                                 <div className="flex items-center space-x-2">
                                   <Link
                                     href={`/reports/${report.id}`}
-                                    className="inline-flex items-center px-3 py-1 text-sm font-medium text-medical-primary-600 hover:text-medical-primary-700 hover:bg-medical-primary-50 rounded-md transition-colors"
+                                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-all duration-200 hover:shadow-md"
                                   >
-                                    <span className="mr-1">👁️</span>
-                                    View
+                                    <span className="mr-2">👁️</span>
+                                    View Details
                                   </Link>
-                                  <button className="inline-flex items-center px-3 py-1 text-sm font-medium text-medical-neutral-600 hover:text-medical-neutral-700 hover:bg-medical-neutral-50 rounded-md transition-colors">
-                                    <span className="mr-1">📄</span>
-                                    PDF
-                                  </button>
-                                  <button className="inline-flex items-center px-3 py-1 text-sm font-medium text-medical-neutral-600 hover:text-medical-neutral-700 hover:bg-medical-neutral-50 rounded-md transition-colors">
-                                    <span className="mr-1">📥</span>
+                                  <button 
+                                    onClick={async () => {
+                                      if (!report.objectKey) return;
+                                      try {
+                                        const response = await fetch(`/api/storage/sign-download?key=${encodeURIComponent(report.objectKey)}`);
+                                        if (!response.ok) throw new Error('Failed to get download URL');
+                                        const { url } = await response.json();
+                                        window.open(url, '_blank');
+                                      } catch (error) {
+                                        console.error('Download failed:', error);
+                                        alert('Failed to download file. Please try again.');
+                                      }
+                                    }}
+                                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 rounded-lg border border-gray-200 transition-all duration-200 hover:shadow-md"
+                                  >
+                                    <span className="mr-2">📥</span>
                                     Download
                                   </button>
                                 </div>
@@ -529,62 +615,64 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
           </div>
         )}
 
-        {/* Pagination */}
+        {/* Beautiful Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-8">
-            <div className="text-sm text-medical-neutral-500">
-              Showing {((currentPage - 1) * VISITS_PER_PAGE) + 1} to {Math.min(currentPage * VISITS_PER_PAGE, visits.length)} of {visits.length} visits
-            </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage <= 1}
-                className="px-3 py-2 text-sm font-medium text-medical-neutral-600 hover:text-medical-neutral-700 hover:bg-medical-neutral-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              
-              <div className="flex items-center space-x-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const pageNum = i + 1;
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                        currentPage === pageNum
-                          ? 'bg-medical-primary-600 text-white'
-                          : 'text-medical-neutral-600 hover:text-medical-neutral-700 hover:bg-medical-neutral-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                {totalPages > 5 && (
-                  <>
-                    <span className="px-2 text-medical-neutral-400">...</span>
-                    <button
-                      onClick={() => setCurrentPage(totalPages)}
-                      className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                        currentPage === totalPages
-                          ? 'bg-medical-primary-600 text-white'
-                          : 'text-medical-neutral-600 hover:text-medical-neutral-700 hover:bg-medical-neutral-50'
-                      }`}
-                    >
-                      {totalPages}
-                    </button>
-                  </>
-                )}
+          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 mt-8">
+            <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+              <div className="text-sm text-gray-600 font-medium">
+                Showing {((currentPage - 1) * VISITS_PER_PAGE) + 1} to {Math.min(currentPage * VISITS_PER_PAGE, visits.length)} of {visits.length} visits
               </div>
-              
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage >= totalPages}
-                className="px-3 py-2 text-sm font-medium text-medical-neutral-600 hover:text-medical-neutral-700 hover:bg-medical-neutral-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage <= 1}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200"
+                >
+                  ← Previous
+                </button>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNum = i + 1;
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                          currentPage === pageNum
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-200'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  {totalPages > 5 && (
+                    <>
+                      <span className="px-2 text-gray-400">...</span>
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
+                          currentPage === totalPages
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg'
+                            : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100 border border-gray-200'
+                        }`}
+                      >
+                        {totalPages}
+                      </button>
+                    </>
+                  )}
+                </div>
+                
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200"
+                >
+                  Next →
+                </button>
+              </div>
             </div>
           </div>
         )}

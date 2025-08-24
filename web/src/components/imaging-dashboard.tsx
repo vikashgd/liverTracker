@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { TrendChart, type SeriesPoint } from './trend-chart';
 
 interface ImagingReport {
   id: string;
@@ -261,49 +262,141 @@ export function ImagingDashboard({ userId }: ImagingDashboardProps) {
               </div>
 
               {/* Size Chart */}
-              <div className="h-48 relative">
-                <svg className="w-full h-full">
-                  <defs>
-                    <linearGradient id="sizeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" style={{ stopColor: '#10b981', stopOpacity: 0.3 }} />
-                      <stop offset="100%" style={{ stopColor: '#10b981', stopOpacity: 0.1 }} />
-                    </linearGradient>
-                  </defs>
+              <div className="h-64 relative bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-6">
+                <div className="h-full">
+                  {/* Chart Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-lg font-semibold text-gray-800">{selectedOrgan} Size Trend</h4>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                      <span className="text-sm text-gray-600">{selectedOrganTrend.data[0]?.unit || 'cm'}</span>
+                    </div>
+                  </div>
                   
-                  {/* Trend line */}
-                  <path
-                    d={selectedOrganTrend.data.map((point, index) => {
-                      const x = (index / (selectedOrganTrend.data.length - 1)) * 100;
-                      const maxSize = Math.max(...selectedOrganTrend.data.map(p => p.size));
-                      const minSize = Math.min(...selectedOrganTrend.data.map(p => p.size));
-                      const y = 100 - ((point.size - minSize) / (maxSize - minSize)) * 80;
-                      return `${index === 0 ? 'M' : 'L'} ${x}% ${Math.max(10, Math.min(90, y))}%`;
-                    }).join(' ')}
-                    fill="none"
-                    stroke="#10b981"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                  
-                  {/* Data points */}
-                  {selectedOrganTrend.data.map((point, index) => {
-                    const x = (index / (selectedOrganTrend.data.length - 1)) * 100;
-                    const maxSize = Math.max(...selectedOrganTrend.data.map(p => p.size));
-                    const minSize = Math.min(...selectedOrganTrend.data.map(p => p.size));
-                    const y = 100 - ((point.size - minSize) / (maxSize - minSize)) * 80;
-                    return (
-                      <circle
-                        key={index}
-                        cx={`${x}%`}
-                        cy={`${Math.max(10, Math.min(90, y))}%`}
-                        r="4"
-                        fill="#10b981"
-                        stroke="white"
-                        strokeWidth="2"
-                      />
-                    );
-                  })}
-                </svg>
+                  {/* Custom Wide Chart */}
+                  <div className="h-40 relative">
+                    <svg className="w-full h-full" viewBox="0 0 800 160">
+                      <defs>
+                        <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" style={{ stopColor: '#10b981', stopOpacity: 0.8 }} />
+                          <stop offset="100%" style={{ stopColor: '#059669', stopOpacity: 1 }} />
+                        </linearGradient>
+                      </defs>
+                      
+                      {/* Grid Lines */}
+                      {[0, 1, 2, 3, 4].map(i => (
+                        <line
+                          key={i}
+                          x1="60"
+                          y1={20 + (i * 30)}
+                          x2="740"
+                          y2={20 + (i * 30)}
+                          stroke="#e5e7eb"
+                          strokeWidth="1"
+                          opacity="0.5"
+                        />
+                      ))}
+                      
+                      {/* Y-axis */}
+                      <line x1="60" y1="20" x2="60" y2="140" stroke="#d1d5db" strokeWidth="2"/>
+                      
+                      {/* X-axis */}
+                      <line x1="60" y1="140" x2="740" y2="140" stroke="#d1d5db" strokeWidth="2"/>
+                      
+                      {/* Data Line and Points */}
+                      {(() => {
+                        const data = selectedOrganTrend.data;
+                        const maxSize = Math.max(...data.map(p => p.size));
+                        const minSize = Math.min(...data.map(p => p.size));
+                        const range = maxSize - minSize || 1;
+                        const padding = range * 0.1;
+                        const adjustedMax = maxSize + padding;
+                        const adjustedMin = minSize - padding;
+                        const adjustedRange = adjustedMax - adjustedMin;
+                        
+                        const points = data.map((point, index) => {
+                          const x = 60 + ((index / (data.length - 1)) * 680);
+                          const y = 140 - (((point.size - adjustedMin) / adjustedRange) * 120);
+                          return { x, y, size: point.size, date: point.date };
+                        });
+                        
+                        // Create path for line
+                        const pathData = points.map((point, index) => 
+                          `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+                        ).join(' ');
+                        
+                        return (
+                          <g>
+                            {/* Trend Line */}
+                            <path
+                              d={pathData}
+                              fill="none"
+                              stroke="url(#lineGradient)"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            
+                            {/* Data Points */}
+                            {points.map((point, index) => (
+                              <g key={index}>
+                                <circle
+                                  cx={point.x}
+                                  cy={point.y}
+                                  r="6"
+                                  fill="#10b981"
+                                  stroke="white"
+                                  strokeWidth="3"
+                                  className="hover:r-8 transition-all duration-200 cursor-pointer"
+                                />
+                                
+                                {/* Value Labels */}
+                                <text
+                                  x={point.x}
+                                  y={point.y - 15}
+                                  textAnchor="middle"
+                                  fontSize="12"
+                                  fontWeight="600"
+                                  fill="#059669"
+                                >
+                                  {point.size}
+                                </text>
+                                
+                                {/* Date Labels */}
+                                <text
+                                  x={point.x}
+                                  y="155"
+                                  textAnchor="middle"
+                                  fontSize="11"
+                                  fill="#6b7280"
+                                >
+                                  {new Date(point.date).toLocaleDateString('en-US', { 
+                                    month: 'short', 
+                                    day: 'numeric'
+                                  })}
+                                </text>
+                              </g>
+                            ))}
+                            
+                            {/* Y-axis Labels */}
+                            {[adjustedMin, (adjustedMin + adjustedMax) / 2, adjustedMax].map((value, index) => (
+                              <text
+                                key={index}
+                                x="50"
+                                y={140 - (index * 60) + 5}
+                                textAnchor="end"
+                                fontSize="11"
+                                fill="#6b7280"
+                              >
+                                {value.toFixed(1)}
+                              </text>
+                            ))}
+                          </g>
+                        );
+                      })()}
+                    </svg>
+                  </div>
+                </div>
               </div>
 
               {/* Size Data Table */}
@@ -359,61 +452,7 @@ export function ImagingDashboard({ userId }: ImagingDashboardProps) {
         </div>
       )}
 
-      {/* Recent Findings */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">🔍 Recent Findings</h3>
-        
-        {recentFindings.length > 0 ? (
-          <div className="space-y-4">
-            {/* Findings Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <div className="flex items-center space-x-2">
-                  <span className="text-green-600 font-bold text-lg">{categorizedFindings.normal.length}</span>
-                  <span className="text-sm text-green-800">Normal Findings</span>
-                </div>
-              </div>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <div className="flex items-center space-x-2">
-                  <span className="text-yellow-600 font-bold text-lg">{categorizedFindings.mild.length}</span>
-                  <span className="text-sm text-yellow-800">Mild Findings</span>
-                </div>
-              </div>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <div className="flex items-center space-x-2">
-                  <span className="text-red-600 font-bold text-lg">{categorizedFindings.concerning.length}</span>
-                  <span className="text-sm text-red-800">Concerning Findings</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Findings List */}
-            <div className="space-y-2">
-              {recentFindings.map((item, index) => (
-                <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded">
-                  <span className="text-lg">{getModalityIcon(item.modality)}</span>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-800">{item.finding}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <span className={`text-xs px-2 py-1 rounded-full ${getModalityColor(item.modality)}`}>
-                        {item.modality || 'Unknown'}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(item.date).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-500">
-            <span className="text-4xl">🔍</span>
-            <p className="mt-2">No findings extracted from imaging reports yet</p>
-          </div>
-        )}
-      </div>
 
       {/* Report Timeline */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -460,12 +499,9 @@ export function ImagingDashboard({ userId }: ImagingDashboardProps) {
                     <div>
                       <div className="text-xs text-gray-500 mb-1">Key findings:</div>
                       <div className="space-y-1">
-                        {report.findings.slice(0, 3).map((finding, findIndex) => (
+                        {report.findings.map((finding, findIndex) => (
                           <p key={findIndex} className="text-xs text-gray-700">• {finding}</p>
                         ))}
-                        {report.findings.length > 3 && (
-                          <p className="text-xs text-gray-500">... and {report.findings.length - 3} more</p>
-                        )}
                       </div>
                     </div>
                   )}

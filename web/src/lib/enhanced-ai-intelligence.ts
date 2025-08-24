@@ -362,29 +362,50 @@ export class EnhancedAIIntelligence {
     ];
 
     return timeframes.flatMap(({ period, months }) => {
-      const baseChange = changeRate * months;
+      // Apply progressive dampening - longer predictions are more conservative
+      const dampening = Math.pow(0.8, months / 3); // Reduces change rate over time
+      const baseChange = changeRate * months * dampening;
+      
+      // Define clinical bounds to prevent unrealistic values
+      const clinicalBounds = this.getClinicalBounds(currentValue);
       
       return [
         {
           timeframe: period,
-          value: Math.max(0, currentValue + baseChange * 0.5), // Best case
-          confidence: Math.max(0.5, 0.9 - months * 0.1),
+          // Best case: minimal change or slight improvement
+          value: this.applyBounds(currentValue + baseChange * 0.2, clinicalBounds),
+          confidence: Math.max(0.5, 0.85 - months * 0.08),
           scenario: 'best' as const
         },
         {
           timeframe: period,
-          value: Math.max(0, currentValue + baseChange), // Likely case
+          // Likely case: conservative trend continuation
+          value: this.applyBounds(currentValue + baseChange * 0.6, clinicalBounds),
           confidence: Math.max(0.6, 0.8 - months * 0.05),
           scenario: 'likely' as const
         },
         {
           timeframe: period,
-          value: Math.max(0, currentValue + baseChange * 1.5), // Worst case
-          confidence: Math.max(0.4, 0.7 - months * 0.1),
+          // Worst case: more conservative than before (was 1.5x, now 1.0x)
+          value: this.applyBounds(currentValue + baseChange * 1.0, clinicalBounds),
+          confidence: Math.max(0.4, 0.65 - months * 0.08),
           scenario: 'worst' as const
         }
       ];
     });
+  }
+
+  private getClinicalBounds(currentValue: number): { min: number; max: number } {
+    // Define realistic bounds based on current value
+    // Prevent predictions from going beyond physiologically reasonable ranges
+    const lowerBound = Math.max(0, currentValue * 0.3); // Don't drop below 30% of current
+    const upperBound = currentValue * 2.5; // Don't exceed 250% of current
+    
+    return { min: lowerBound, max: upperBound };
+  }
+
+  private applyBounds(value: number, bounds: { min: number; max: number }): number {
+    return Math.max(bounds.min, Math.min(bounds.max, value));
   }
 
   private calculateChangeRate(data: number[]): number {
@@ -393,7 +414,17 @@ export class EnhancedAIIntelligence {
     const recent = data.slice(-3);
     if (recent.length < 2) return 0;
     
-    return (recent[recent.length - 1] - recent[0]) / recent.length;
+    // Calculate monthly change rate but apply dampening for medical realism
+    const rawChangeRate = (recent[recent.length - 1] - recent[0]) / recent.length;
+    
+    // Apply conservative dampening factor - medical values don't change linearly
+    // Reduce change rate by 70% to be more realistic
+    const dampenedRate = rawChangeRate * 0.3;
+    
+    // Cap maximum monthly change to prevent unrealistic projections
+    const maxMonthlyChange = Math.abs(recent[recent.length - 1]) * 0.05; // Max 5% change per month
+    
+    return Math.sign(dampenedRate) * Math.min(Math.abs(dampenedRate), maxMonthlyChange);
   }
 
   private isPredictionConcerning(metric: CanonicalMetric, predictedValue: number): boolean {
@@ -591,8 +622,8 @@ export class EnhancedAIIntelligence {
       recommendations.push({
         category: 'specialist' as const,
         priority: 'high' as const,
-        title: 'Hepatology Consultation',
-        description: 'Schedule appointment with hepatologist for evaluation',
+        title: 'Connect with Your Liver Specialist',
+        description: 'Your numbers suggest it would be really beneficial to have a conversation with a hepatologist. They\'re experts who can provide specialized guidance tailored to your unique situation. This isn\'t about being alarmed—it\'s about getting you the best possible support.',
         frequency: 'Within 2 weeks'
       });
     }
@@ -601,8 +632,8 @@ export class EnhancedAIIntelligence {
     recommendations.push({
       category: 'monitoring' as const,
       priority: 'high' as const,
-      title: 'Regular Lab Monitoring',
-      description: 'Continue comprehensive metabolic panel and liver function tests',
+      title: 'Stay Connected with Your Health',
+      description: 'Regular lab work helps us understand how your body is responding and gives us valuable insights to guide your care. Think of these tests as check-ins with your health—they help us celebrate progress and adjust our approach when needed.',
       frequency: 'Every 3 months'
     });
 
@@ -610,17 +641,35 @@ export class EnhancedAIIntelligence {
     recommendations.push({
       category: 'lifestyle' as const,
       priority: 'medium' as const,
-      title: 'Alcohol Avoidance',
-      description: 'Complete avoidance of alcohol to prevent further liver damage',
-      frequency: 'Ongoing'
+      title: 'Protect Your Liver with Love',
+      description: 'Avoiding alcohol is one of the most powerful gifts you can give your liver. We know this can be challenging, and you don\'t have to do it alone. Your healthcare team is here to support you with resources, understanding, and encouragement every step of the way.',
+      frequency: 'Daily commitment'
     });
 
     recommendations.push({
       category: 'diet' as const,
       priority: 'medium' as const,
-      title: 'Liver-Healthy Diet',
-      description: 'Focus on low-sodium, adequate protein diet',
-      frequency: 'Daily'
+      title: 'Nourish Your Body Mindfully',
+      description: 'Eating in a way that supports your liver doesn\'t mean giving up everything you enjoy. Focus on gentle, nourishing choices: fresh foods when possible, mindful portions, and being kind to yourself when you\'re not perfect. Small, consistent changes make the biggest difference.',
+      frequency: 'Daily practice'
+    });
+
+    // Add empowering lifestyle recommendation
+    recommendations.push({
+      category: 'lifestyle' as const,
+      priority: 'medium' as const,
+      title: 'Move Your Body with Compassion',
+      description: 'Gentle movement—whether it\'s a short walk, stretching, or any activity that brings you joy—can boost your energy and mood. Listen to your body and do what feels good. Some days that might be more, some days less, and both are perfectly okay.',
+      frequency: 'As you feel able'
+    });
+
+    // Add emotional support recommendation
+    recommendations.push({
+      category: 'lifestyle' as const,
+      priority: 'low' as const,
+      title: 'Honor Your Emotional Wellbeing',
+      description: 'Managing a health condition can feel overwhelming sometimes, and that\'s completely normal. Consider connecting with a counselor, support group, or trusted friends and family. Taking care of your mental health is just as important as taking care of your physical health.',
+      frequency: 'As needed'
     });
 
     return recommendations;
@@ -630,13 +679,15 @@ export class EnhancedAIIntelligence {
     const actions = [];
 
     if (riskLevel === 'critical' || riskLevel === 'high') {
-      actions.push('Schedule urgent hepatology consultation');
-      actions.push('Consider transplant center evaluation');
+      actions.push('💙 Reach out to your hepatologist—they\'re your partner in this journey and want to help');
+      actions.push('🌟 Consider exploring advanced care options with your medical team when you\'re ready');
     }
 
-    actions.push('Upload next lab results when available');
-    actions.push('Track symptoms and medication adherence');
-    actions.push('Review dietary recommendations');
+    actions.push('📊 Share your next lab results when they\'re available—every data point helps us support you better');
+    actions.push('💭 Keep a gentle awareness of how you\'re feeling day-to-day, both physically and emotionally');
+    actions.push('🍎 Take a moment to review the nutrition suggestions and see what feels manageable for you right now');
+    actions.push('🤝 Remember that your healthcare team is here to support you—don\'t hesitate to reach out with questions or concerns');
+    actions.push('🎯 Celebrate the small wins along the way—every positive choice you make matters');
 
     return actions;
   }

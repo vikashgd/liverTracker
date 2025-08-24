@@ -1,24 +1,115 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { OfflineStatusBadge } from '@/components/offline-indicator';
+import { 
+  BarChart3, 
+  Upload, 
+  FileText, 
+  FolderOpen, 
+  Calculator, 
+  Scan, 
+  User, 
+  Settings, 
+  Search, 
+  Wrench,
+  ChevronDown,
+  Menu,
+  X,
+  Activity,
+  Heart,
+  Shield,
+  Bell,
+  LogOut
+} from 'lucide-react';
 
 export function MedicalHeader() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const headerRef = useRef<HTMLElement>(null);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const navigationGroups = [
+    {
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: BarChart3,
+      type: 'single'
+    },
+    {
+      name: 'Upload',
+      icon: Upload,
+      type: 'dropdown',
+      items: [
+        { name: 'Upload Report', href: '/', icon: FileText },
+        { name: 'Manual Entry', href: '/manual-entry', icon: Upload },
+      ]
+    },
+    {
+      name: 'Reports',
+      href: '/reports',
+      icon: FolderOpen,
+      type: 'single'
+    },
+    {
+      name: 'Analysis',
+      icon: Calculator,
+      type: 'dropdown',
+      items: [
+        { name: 'Medical Scoring', href: '/scoring', icon: Calculator },
+        { name: 'Imaging Analysis', href: '/imaging', icon: Scan },
+      ]
+    },
+    {
+      name: 'Account',
+      icon: User,
+      type: 'dropdown',
+      items: [
+        { name: 'Profile', href: '/profile', icon: User },
+        { name: 'Settings', href: '/settings', icon: Settings },
+      ]
+    },
+    {
+      name: 'Admin',
+      icon: Wrench,
+      type: 'dropdown',
+      items: [
+        { name: 'Debug Data', href: '/debug-data', icon: Search },
+        { name: 'Data Fix', href: '/admin/data-fix', icon: Wrench },
+      ]
+    },
+  ];
+
+  // Flattened navigation for mobile menu
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: '📊' },
-    { name: 'Upload Report', href: '/', icon: '📄' },
-    { name: 'Manual Entry', href: '/manual-entry', icon: '✍️' },
-    { name: 'Reports Library', href: '/reports', icon: '🗂️' },
-    { name: 'Timeline', href: '/timeline', icon: '📅' },
-    { name: 'Debug Data', href: '/debug-data', icon: '🔍' },
-    { name: 'Data Fix', href: '/admin/data-fix', icon: '🔧' },
+    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
+    { name: 'Upload Report', href: '/', icon: FileText },
+    { name: 'Manual Entry', href: '/manual-entry', icon: Upload },
+    { name: 'Reports Library', href: '/reports', icon: FolderOpen },
+    { name: 'Medical Scoring', href: '/scoring', icon: Calculator },
+    { name: 'Imaging Analysis', href: '/imaging', icon: Scan },
+    { name: 'Profile', href: '/profile', icon: User },
+    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Debug Data', href: '/debug-data', icon: Search },
+    { name: 'Data Fix', href: '/admin/data-fix', icon: Wrench },
   ];
 
   const isCurrentPage = (href: string) => {
@@ -28,102 +119,205 @@ export function MedicalHeader() {
   };
 
   return (
-    <header className="bg-white border-b border-medical-neutral-200 sticky top-0 z-50 shadow-sm">
-      <div className="medical-layout-container">
+    <header ref={headerRef} className="bg-white/95 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
             <Link href="/dashboard" className="flex items-center space-x-3 group">
-              <div className="w-8 h-8 bg-gradient-to-br from-medical-primary-500 to-medical-primary-600 rounded-lg flex items-center justify-center group-hover:shadow-md transition-shadow">
-                <span className="text-white font-bold text-lg">🩺</span>
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+                  <Activity className="w-5 h-5 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                  <Heart className="w-2.5 h-2.5 text-white" />
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-medical-neutral-900">LiverTracker</h1>
-                <p className="text-xs text-medical-neutral-500 hidden sm:block">Medical Data Intelligence</p>
+              <div className="hidden sm:block">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                  LiverTracker
+                </h1>
+                <p className="text-xs text-slate-500 font-medium">Medical Intelligence Platform</p>
               </div>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-1">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`nav-link flex items-center space-x-2 ${
-                  isCurrentPage(item.href) ? 'nav-link-active' : ''
-                }`}
-              >
-                <span className="text-base">{item.icon}</span>
-                <span>{item.name}</span>
-              </Link>
-            ))}
+          <nav className="hidden lg:flex items-center space-x-1">
+            {navigationGroups.map((group) => {
+              const IconComponent = group.icon;
+              return (
+                <div key={group.name} className="relative">
+                  {group.type === 'single' ? (
+                    <Link
+                      href={group.href!}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        isCurrentPage(group.href!) 
+                          ? 'bg-blue-50 text-blue-700 shadow-sm' 
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      }`}
+                    >
+                      <IconComponent className="w-4 h-4" />
+                      <span>{group.name}</span>
+                    </Link>
+                  ) : (
+                    <div>
+                      <button
+                        onClick={() => setOpenDropdown(openDropdown === group.name ? null : group.name)}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                          group.items?.some(item => isCurrentPage(item.href)) 
+                            ? 'bg-blue-50 text-blue-700 shadow-sm' 
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                        }`}
+                      >
+                        <IconComponent className="w-4 h-4" />
+                        <span>{group.name}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${
+                          openDropdown === group.name ? 'rotate-180' : ''
+                        }`} />
+                      </button>
+                      
+                      {openDropdown === group.name && (
+                        <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200/60 py-2 z-50 backdrop-blur-sm">
+                          <div className="px-3 py-2 border-b border-slate-100">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{group.name}</p>
+                          </div>
+                          {group.items?.map((item) => {
+                            const ItemIcon = item.icon;
+                            return (
+                              <Link
+                                key={item.name}
+                                href={item.href}
+                                onClick={() => setOpenDropdown(null)}
+                                className={`flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${
+                                  isCurrentPage(item.href) 
+                                    ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600' 
+                                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                                }`}
+                              >
+                                <ItemIcon className="w-4 h-4" />
+                                <span className="font-medium">{item.name}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </nav>
 
           {/* User Menu */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             <OfflineStatusBadge />
+            
+            {/* Notifications */}
+            <button className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            </button>
+
             {session ? (
               <div className="flex items-center space-x-3">
-                <div className="hidden sm:block text-right">
-                  <p className="text-sm font-medium text-medical-neutral-900">
+                <div className="hidden md:block text-right">
+                  <p className="text-sm font-semibold text-slate-900">
                     {session.user?.name || session.user?.email}
                   </p>
-                  <p className="text-xs text-medical-neutral-500">Patient</p>
+                  <div className="flex items-center space-x-1">
+                    <Shield className="w-3 h-3 text-green-500" />
+                    <p className="text-xs text-slate-500 font-medium">Patient Portal</p>
+                  </div>
                 </div>
-                <div className="w-8 h-8 bg-medical-primary-100 rounded-full flex items-center justify-center">
-                  <span className="text-medical-primary-600 font-medium text-sm">
-                    {(session.user?.name?.[0] || session.user?.email?.[0] || 'U').toUpperCase()}
-                  </span>
+                <div className="relative">
+                  <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+                    <span className="text-white font-semibold text-sm">
+                      {(session.user?.name?.[0] || session.user?.email?.[0] || 'U').toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                 </div>
                 <button
                   onClick={() => signOut()}
-                  className="btn-secondary text-sm px-3 py-1"
+                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                 >
-                  Sign Out
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:block">Sign Out</span>
                 </button>
               </div>
             ) : (
-              <Link href="/auth/signin" className="btn-primary">
-                Sign In
+              <Link 
+                href="/auth/signin" 
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+              >
+                <User className="w-4 h-4" />
+                <span>Sign In</span>
               </Link>
             )}
 
             {/* Mobile menu button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden btn-secondary p-2"
+              className="lg:hidden p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
               aria-label="Toggle mobile menu"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {isMobileMenuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
+              {isMobileMenuOpen ? (
+                <X className="w-5 h-5" />
+              ) : (
+                <Menu className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-medical-neutral-200 py-4">
-            <nav className="space-y-1">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`nav-link flex items-center space-x-3 w-full ${
-                    isCurrentPage(item.href) ? 'nav-link-active' : ''
-                  }`}
-                >
-                  <span className="text-lg">{item.icon}</span>
-                  <span>{item.name}</span>
-                </Link>
-              ))}
-            </nav>
+          <div className="lg:hidden border-t border-slate-200/60 bg-white/95 backdrop-blur-md">
+            <div className="px-4 py-6 space-y-1">
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3">Navigation</p>
+              </div>
+              {navigation.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
+                      isCurrentPage(item.href) 
+                        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600' 
+                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    <IconComponent className="w-5 h-5" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+              
+              {session && (
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                  <div className="px-3 py-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Account</p>
+                  </div>
+                  <div className="flex items-center space-x-3 px-3 py-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">
+                        {(session.user?.name?.[0] || session.user?.email?.[0] || 'U').toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {session.user?.name || session.user?.email}
+                      </p>
+                      <p className="text-xs text-slate-500">Patient Portal</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

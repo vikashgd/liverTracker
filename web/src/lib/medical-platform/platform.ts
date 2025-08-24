@@ -18,6 +18,7 @@ import type {
   ChartSeries,
   MetricName
 } from './core/types';
+import type { MELDResult } from '../meld-calculator';
 
 /**
  * Main Medical Data Platform
@@ -204,13 +205,15 @@ export class MedicalDataPlatform {
   /**
    * Calculate MELD score
    */
-  async calculateMELD(userId: string): Promise<{
-    score: number;
-    naScore?: number;
-    risk: string;
-    components: Record<string, number>;
-  } | null> {
-    return this.insights.calculateMELD(userId);
+  async calculateMELD(userId: string, clinicalData?: {
+    gender?: 'male' | 'female';
+    dialysis?: {
+      onDialysis: boolean;
+      sessionsPerWeek: number;
+      lastSession?: string;
+    };
+  }): Promise<MELDResult | null> {
+    return this.insights.calculateMELD(userId, clinicalData);
   }
 
   /**

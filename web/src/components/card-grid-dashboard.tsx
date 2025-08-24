@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { SeriesPoint } from "@/components/trend-chart";
 import { CanonicalMetric } from "@/lib/metrics";
 import MetricDetailModal from "./metric-detail-modal";
+import { formatMedicalValue } from "@/lib/medical-display-formatter";
 
 type ChartSpec = { 
   title: CanonicalMetric; 
@@ -165,9 +166,17 @@ function MetricCard({ chart, onClick, isClient }: MetricCardProps) {
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-gray-900">
-            {latestData.value.toLocaleString()}
+            {(() => {
+              const formatted = formatMedicalValue(chart.title, latestData.value, chart.unit);
+              return formatted.displayValue.toLocaleString();
+            })()}
           </div>
-          <div className="text-sm text-gray-500">{chart.unit}</div>
+          <div className="text-sm text-gray-500">
+            {(() => {
+              const formatted = formatMedicalValue(chart.title, latestData.value, chart.unit);
+              return formatted.displayUnit;
+            })()}
+          </div>
         </div>
       </div>
 

@@ -10,6 +10,15 @@ import type {
   MetricName
 } from '../core/types';
 import { MEDICAL_PARAMETERS, getMELDComponents } from '../core/parameters';
+import { 
+  calculateMELD, 
+  calculateChildPugh,
+  validateMELDParameters,
+  type MELDParameters,
+  type MELDResult,
+  type ChildPughParameters,
+  type ChildPughResult
+} from '../../meld-calculator';
 
 /**
  * Medical Insights Engine
@@ -44,15 +53,39 @@ export class InsightsEngine {
     const riskFactors: string[] = [];
     const scores: any = {};
 
-    // Calculate clinical scores
+    // Calculate clinical scores with comprehensive MELD calculator
     const meldResult = await this.calculateMELDFromReport(report);
     if (meldResult) {
-      scores.meld = meldResult.score;
-      scores.meldNa = meldResult.naScore;
-      insights.push(`MELD Score: ${meldResult.score} (${meldResult.risk})`);
+      scores.meld = meldResult.meld;
+      scores.meldNa = meldResult.meldNa;
+      scores.meld3 = meldResult.meld3;
       
-      if (meldResult.naScore) {
-        insights.push(`MELD-Na Score: ${meldResult.naScore}`);
+      // Add primary score insight
+      const primaryScore = meldResult.meld3 || meldResult.meldNa || meldResult.meld;
+      const scoreType = meldResult.meld3 ? 'MELD 3.0' : meldResult.meldNa ? 'MELD-Na' : 'MELD';
+      insights.push(`${scoreType} Score: ${primaryScore} (${meldResult.urgency} Priority)`);
+      
+      // Add interpretation
+      insights.push(meldResult.interpretation);
+      
+      // Add transplant priority info
+      if (meldResult.transplantPriority) {
+        insights.push(`Transplant Status: ${meldResult.transplantPriority}`);
+      }
+      
+      // Add warnings as recommendations
+      if (meldResult.warnings.length > 0) {
+        recommendations.push(...meldResult.warnings);
+      }
+      
+      // Add missing parameter recommendations
+      if (meldResult.missingParameters.length > 0) {
+        recommendations.push(`Consider adding: ${meldResult.missingParameters.join(', ')} for more accurate MELD calculation`);
+      }
+      
+      // Add dialysis adjustment info
+      if (meldResult.adjustments.dialysisAdjustment) {
+        insights.push(`Dialysis adjustment applied: Creatinine set to ${meldResult.adjustments.creatinineAdjusted} mg/dL`);
       }
     }
 
@@ -78,81 +111,111 @@ export class InsightsEngine {
   }
 
   /**
-   * Calculate MELD score from user data
+   * Calculate MELD score from user data with comprehensive validation
    */
-  async calculateMELD(userId: string): Promise<{
-    score: number;
-    naScore?: number;
-    risk: string;
-    components: Record<string, number>;
-  } | null> {
+  async calculateMELD(userId: string, clinicalData?: {
+    gender?: 'male' | 'female';
+    dialysis?: {
+      onDialysis: boolean;
+      sessionsPerWeek: number;
+      lastSession?: string;
+    };
+  }): Promise<MELDResult | null> {
     // This would typically fetch latest values from repository
-    // For now, return null as this is a foundational implementation
-    console.log('MELD calculation for user:', userId);
-    return null;
+    // For now, we'll use the report-based calculation
+    console.log('🧮 MELD calculation for user:', userId);
+    
+    // In a real implementation, this would:
+    // 1. Fetch latest lab values from repository
+    // 2. Extract MELD parameters
+    // 3. Apply clinical data (dialysis, gender)
+    // 4. Calculate using the comprehensive MELD calculator
+    
+    return null; // Placeholder - will be implemented when repository is connected
   }
 
   /**
-   * Calculate MELD score from report data
+   * Calculate MELD score from report data using comprehensive calculator
    */
-  async calculateMELDFromReport(report: MedicalReport): Promise<{
-    score: number;
-    naScore?: number;
-    risk: string;
-    components: Record<string, number>;
-  } | null> {
+  async calculateMELDFromReport(
+    report: MedicalReport, 
+    clinicalData?: {
+      gender?: 'male' | 'female';
+      dialysis?: {
+        onDialysis: boolean;
+        sessionsPerWeek: number;
+        lastSession?: string;
+      };
+    }
+  ): Promise<MELDResult | null> {
+    console.log('🧮 Calculating MELD from report data...');
+
     const bilirubin = report.values.get('Bilirubin');
     const inr = report.values.get('INR');
     const creatinine = report.values.get('Creatinine');
     const sodium = report.values.get('Sodium');
+    const albumin = report.values.get('Albumin');
 
+    // Check if we have minimum required parameters
     if (!bilirubin || !inr || !creatinine) {
+      console.log('❌ Missing required MELD parameters:', {
+        bilirubin: !!bilirubin,
+        inr: !!inr,
+        creatinine: !!creatinine
+      });
       return null;
     }
 
-    // Extract values
-    const bilirubinValue = bilirubin.processed.value;
-    const inrValue = inr.processed.value;
-    const creatinineValue = creatinine.processed.value;
-    const sodiumValue = sodium?.processed.value;
+    // Build MELD parameters object
+    const meldParams: MELDParameters = {
+      bilirubin: bilirubin.processed.value,
+      creatinine: creatinine.processed.value,
+      inr: inr.processed.value,
+      sodium: sodium?.processed.value,
+      albumin: albumin?.processed.value,
+      gender: clinicalData?.gender,
+      dialysis: clinicalData?.dialysis
+    };
 
-    // Apply MELD formula caps
-    const cappedBilirubin = Math.max(1.0, Math.min(4.0, bilirubinValue));
-    const cappedINR = Math.max(1.0, Math.min(4.0, inrValue));
-    const cappedCreatinine = Math.max(1.0, Math.min(4.0, creatinineValue));
+    console.log('🔍 MELD Parameters:', {
+      bilirubin: `${meldParams.bilirubin} mg/dL`,
+      creatinine: `${meldParams.creatinine} mg/dL`,
+      inr: meldParams.inr,
+      sodium: meldParams.sodium ? `${meldParams.sodium} mEq/L` : 'Not provided',
+      albumin: meldParams.albumin ? `${meldParams.albumin} g/dL` : 'Not provided',
+      gender: meldParams.gender || 'Not provided',
+      dialysis: meldParams.dialysis?.onDialysis ? `Yes (${meldParams.dialysis.sessionsPerWeek}/week)` : 'Not provided'
+    });
 
-    // MELD calculation
-    const meldScore = Math.round(
-      3.78 * Math.log(cappedBilirubin) +
-      11.2 * Math.log(cappedINR) +
-      9.57 * Math.log(cappedCreatinine) +
-      6.43
-    );
-
-    const finalMeldScore = Math.max(6, Math.min(40, meldScore));
-
-    // MELD-Na calculation if sodium available
-    let meldNaScore: number | undefined;
-    if (sodiumValue) {
-      const cappedSodium = Math.max(125, Math.min(137, sodiumValue));
-      meldNaScore = finalMeldScore + 1.32 * (137 - cappedSodium) - (0.033 * finalMeldScore * (137 - cappedSodium));
-      meldNaScore = Math.round(Math.max(6, Math.min(40, meldNaScore)));
+    // Validate parameters
+    const validation = validateMELDParameters(meldParams);
+    if (!validation.isValid) {
+      console.log('❌ MELD parameter validation failed:', validation.errors);
+      return null;
     }
 
-    // Risk assessment
-    const risk = this.assessMELDRisk(finalMeldScore);
+    // Log validation warnings and recommendations
+    if (validation.warnings.length > 0) {
+      console.log('⚠️ MELD validation warnings:', validation.warnings);
+    }
+    if (validation.recommendations.length > 0) {
+      console.log('💡 MELD recommendations:', validation.recommendations);
+    }
 
-    return {
-      score: finalMeldScore,
-      naScore: meldNaScore,
-      risk,
-      components: {
-        bilirubin: bilirubinValue,
-        inr: inrValue,
-        creatinine: creatinineValue,
-        ...(sodiumValue && { sodium: sodiumValue })
-      }
-    };
+    // Calculate MELD using comprehensive calculator
+    const meldResult = calculateMELD(meldParams);
+    
+    console.log('✅ MELD Calculation Result:', {
+      meld: meldResult.meld,
+      meldNa: meldResult.meldNa,
+      meld3: meldResult.meld3,
+      urgency: meldResult.urgency,
+      confidence: meldResult.confidence,
+      warnings: meldResult.warnings.length,
+      missingParams: meldResult.missingParameters.length
+    });
+
+    return meldResult;
   }
 
   private assessMELDRisk(score: number): string {

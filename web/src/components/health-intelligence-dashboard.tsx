@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { HealthIntelligenceEngine, HealthMetric, HealthScore, HealthAlert, HealthInsight, PatientProfile } from '@/lib/ai-health-intelligence';
 import { CanonicalMetric } from '@/lib/metrics';
 import { SmartAlertSystem, CompactAlertBanner } from './smart-alert-system';
-import { MELDIntelligence } from './meld-intelligence';
-import { ImagingDashboard } from './imaging-dashboard';
+import { formatMedicalValue } from '@/lib/medical-display-formatter';
+
+
 import DiseaseProgressionAnalysis from './disease-progression-analysis';
 
 interface HealthIntelligenceDashboardProps {
@@ -24,7 +25,7 @@ export function HealthIntelligenceDashboard({ charts, patientProfile = {} }: Hea
   const [alerts, setAlerts] = useState<HealthAlert[]>([]);
   const [insights, setInsights] = useState<HealthInsight[]>([]);
   const [isClient, setIsClient] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'alerts' | 'insights' | 'trends' | 'meld' | 'imaging' | 'progression'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'alerts' | 'insights' | 'trends' | 'progression'>('overview');
   const [currentProfile, setCurrentProfile] = useState<PatientProfile>(patientProfile);
 
   useEffect(() => {
@@ -125,8 +126,6 @@ export function HealthIntelligenceDashboard({ charts, patientProfile = {} }: Hea
           {[
             { id: 'overview', name: 'Overview', icon: '📊' },
             { id: 'progression', name: 'Disease Journey', icon: '🚶‍♂️' },
-            { id: 'meld', name: 'MELD Score', icon: '🏥' },
-            { id: 'imaging', name: 'Imaging', icon: '🔬' },
             { id: 'alerts', name: 'Alerts', icon: '🚨', count: alerts.length },
             { id: 'insights', name: 'Insights', icon: '💡', count: insights.length },
             { id: 'trends', name: 'Trends', icon: '📈' }
@@ -246,17 +245,9 @@ export function HealthIntelligenceDashboard({ charts, patientProfile = {} }: Hea
         />
       )}
 
-      {activeTab === 'meld' && (
-        <MELDIntelligence 
-          charts={charts} 
-          patientProfile={currentProfile} 
-          onProfileUpdate={setCurrentProfile}
-        />
-      )}
 
-      {activeTab === 'imaging' && (
-        <ImagingDashboard />
-      )}
+
+
 
       {activeTab === 'alerts' && (
         <SmartAlertSystem alerts={alerts} />
@@ -354,7 +345,12 @@ export function HealthIntelligenceDashboard({ charts, patientProfile = {} }: Hea
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Latest:</span>
                       <span className="font-medium">
-                        {validData[validData.length - 1]?.value?.toFixed(1)} {chart.unit}
+                        {(() => {
+                          const latestValue = validData[validData.length - 1]?.value;
+                          if (latestValue === null || latestValue === undefined) return 'N/A';
+                          const formatted = formatMedicalValue(chart.title, latestValue, chart.unit);
+                          return `${formatted.displayValue.toFixed(1)} ${formatted.displayUnit}`;
+                        })()}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">

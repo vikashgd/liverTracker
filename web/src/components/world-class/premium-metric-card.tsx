@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { CanonicalMetric } from '@/lib/metrics';
+import { formatMedicalValue } from '@/lib/medical-display-formatter';
 
 interface PremiumMetricCardProps {
   metric: CanonicalMetric;
@@ -152,7 +153,15 @@ export function PremiumMetricCard({
       {/* Main Value Display */}
       <div className="text-center mb-6">
         <div className={`text-5xl font-black leading-none mb-2 ${currentStatus.valueColor}`}>
-          {formatValue(value)}
+          {(() => {
+            const formatted = formatMedicalValue(metric, value, unit);
+            const displayValue = formatted.displayValue;
+            // Apply the same formatting logic for large numbers
+            if (displayValue >= 1000) {
+              return (displayValue / 1000).toFixed(1) + 'K';
+            }
+            return displayValue.toString();
+          })()}
         </div>
         <div className="text-lg text-gray-600 font-medium">
           {unit}
@@ -189,7 +198,12 @@ export function PremiumMetricCard({
         
         <div className="flex justify-center mt-2">
           <div className="text-xs text-gray-600">
-            Current: <span className={`font-semibold ${currentStatus.textColor}`}>{value} {unit}</span>
+            Current: <span className={`font-semibold ${currentStatus.textColor}`}>
+              {(() => {
+                const formatted = formatMedicalValue(metric, value, unit);
+                return `${formatted.displayValue} ${formatted.displayUnit}`;
+              })()}
+            </span>
           </div>
         </div>
       </div>

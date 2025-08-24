@@ -279,8 +279,14 @@ export class DataRepository {
     if (dayMetrics.length === 0) return null;
     if (dayMetrics.length === 1) return dayMetrics[0];
 
+    // Apply runtime unit conversion for legacy data
+    const convertedMetrics = dayMetrics.map(metric => {
+      const converted = this.applyRuntimeConversion(metric, parameter);
+      return converted;
+    });
+
     // Scoring criteria for selecting the best metric
-    const scoredMetrics = dayMetrics.map(metric => {
+    const scoredMetrics = convertedMetrics.map(metric => {
       let score = 0;
 
       // Confidence score
@@ -294,7 +300,12 @@ export class DataRepository {
       // Value plausibility (within critical range)
       if (metric.value >= parameter.clinical.criticalRange.min && 
           metric.value <= parameter.clinical.criticalRange.max) {
-        score += 2;
+        score += 3; // Increased weight for plausible values
+      } else {
+        // Penalize extreme outliers
+        if (metric.value > parameter.clinical.criticalRange.max * 10) {
+          score -= 2;
+        }
       }
 
       // Unit consistency
@@ -311,6 +322,43 @@ export class DataRepository {
     // Return highest scoring metric
     scoredMetrics.sort((a, b) => b.score - a.score);
     return scoredMetrics[0].metric;
+  }
+
+  /**
+   * Apply runtime unit conversion for legacy data
+   * Safe conversion that doesn't modify the database
+   */
+  private applyRuntimeConversion(metric: any, parameter: any): any {
+    if (!metric.value || metric.value === null) return metric;
+
+    const metricName = parameter.metric.toLowerCase();
+    let convertedValue = metric.value;
+    let convertedUnit = metric.unit || parameter.units.standard;
+
+    // Platelet conversion (most critical fix)
+    if (metricName === 'platelets') {
+      // If value is suspiciously high (raw count), convert it
+      if (metric.value >= 50000 && metric.value <= 1000000) {
+        convertedValue = metric.value * 0.001;
+        convertedUnit = '×10³/μL';
+        console.log(`🔧 Runtime conversion: Platelets ${metric.value} → ${convertedValue}`);
+      }
+      // If value is in lakhs range
+      else if (metric.value >= 0.5 && metric.value <= 10 && metric.value < 50) {
+        convertedValue = metric.value * 100;
+        convertedUnit = '×10³/μL';
+        console.log(`🔧 Runtime conversion: Platelets ${metric.value} lakhs → ${convertedValue}`);
+      }
+    }
+
+    // Return converted metric (doesn't modify original)
+    return {
+      ...metric,
+      value: convertedValue,
+      unit: convertedUnit,
+      originalValue: metric.value, // Keep track of original
+      wasConverted: convertedValue !== metric.value
+    };
   }
 
   private calculateStatistics(values: number[]) {

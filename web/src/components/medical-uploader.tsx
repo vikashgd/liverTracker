@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Upload, Camera, FileText, X, Plus, Trash2, Eye } from "lucide-react";
 
 async function signDownload(key: string) {
   const res = await fetch(`/api/storage/sign-download?key=${encodeURIComponent(key)}`);
@@ -42,10 +43,6 @@ type ExtractionResult = {
 } | null;
 
 type PdfPageViewport = { width: number; height: number };
-interface PdfPageLike {
-  getViewport(params: { scale: number }): PdfPageViewport;
-  render(params: { canvasContext: CanvasRenderingContext2D; viewport: PdfPageViewport }): { promise: Promise<void> };
-}
 
 async function getPdfJsModule() {
 
@@ -90,7 +87,7 @@ async function convertPdfToImages(file: File): Promise<string[]> {
 }
 
 export function MedicalUploader() {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -99,9 +96,11 @@ export function MedicalUploader() {
   const [error, setError] = useState<string | null>(null);
   const [objectKey, setObjectKey] = useState<string | null>(null);
 
-  // Reset all states when a new file is selected
-  const handleFileChange = (newFile: File | null) => {
-    setFile(newFile);
+  // Handle file selection (single or multiple)
+  const handleFilesChange = (newFiles: FileList | null) => {
+    if (!newFiles) return;
+    const fileArray = Array.from(newFiles);
+    setFiles(fileArray);
     setEdited(null);
     setSavedId(null);
     setError(null);
@@ -111,39 +110,90 @@ export function MedicalUploader() {
     setSaving(false);
   };
 
-  // Reset everything including clearing the file input
+  // Add more files to existing selection
+  const addMoreFiles = (newFiles: FileList | null) => {
+    if (!newFiles) return;
+    const fileArray = Array.from(newFiles);
+    setFiles(prev => [...prev, ...fileArray]);
+    setEdited(null);
+    setSavedId(null);
+    setError(null);
+    setBusy(false);
+    setExtracting(false);
+    setSaving(false);
+  };
+
+  // Remove file from selection
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Reset everything including clearing the file inputs
   const resetUploader = () => {
     const fileInput = document.querySelector('#medical-file-upload') as HTMLInputElement;
-    if (fileInput) {
-      fileInput.value = '';
-    }
-    handleFileChange(null);
+    const cameraInput = document.querySelector('#medical-camera-upload') as HTMLInputElement;
+    const multiInput = document.querySelector('#medical-multi-upload') as HTMLInputElement;
+    
+    if (fileInput) fileInput.value = '';
+    if (cameraInput) cameraInput.value = '';
+    if (multiInput) multiInput.value = '';
+    
+    setFiles([]);
   };
 
   const onUpload = async () => {
-    if (!file || extracting || saving || savedId) return;
+    if (files.length === 0 || extracting || saving || savedId) return;
     setExtracting(true);
     setBusy(true);
     setError(null);
 
     try {
-      const key = `reports/${Date.now()}-${file.name}`;
-      const uploadRes = await fetch(`/api/storage/upload?key=${encodeURIComponent(key)}`, {
-        method: "POST",
-        body: file,
-      });
-      if (!uploadRes.ok) throw new Error("Upload failed");
-
-      const { key: uploadedKey } = await uploadRes.json();
-      setObjectKey(uploadedKey);
-
       let extractionResult;
-      if (file.type === "application/pdf") {
-        const imageUrls = await convertPdfToImages(file);
-        extractionResult = await extractFromImages(imageUrls);
+
+      if (files.length === 1) {
+        // Single file upload
+        const file = files[0];
+        const key = `reports/${Date.now()}-${file.name}`;
+        const uploadRes = await fetch(`/api/storage/upload?key=${encodeURIComponent(key)}`, {
+          method: "POST",
+          body: file,
+        });
+        if (!uploadRes.ok) throw new Error("Upload failed");
+
+        const { key: uploadedKey } = await uploadRes.json();
+        setObjectKey(uploadedKey);
+
+        if (file.type === "application/pdf") {
+          const imageUrls = await convertPdfToImages(file);
+          extractionResult = await extractFromImages(imageUrls);
+        } else {
+          const downloadRes = await signDownload(uploadedKey);
+          extractionResult = await extract(downloadRes.url, file.type);
+        }
       } else {
-        const downloadRes = await signDownload(uploadedKey);
-        extractionResult = await extract(downloadRes.url, file.type);
+        // Multiple files upload
+        const imageUrls: string[] = [];
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const key = `reports/${Date.now()}-batch-${i}-${file.name}`;
+          const uploadRes = await fetch(`/api/storage/upload?key=${encodeURIComponent(key)}`, {
+            method: "POST",
+            body: file,
+          });
+          if (!uploadRes.ok) throw new Error(`Failed to upload file ${i + 1}`);
+
+          const { key: uploadedKey } = await uploadRes.json();
+          const downloadRes = await signDownload(uploadedKey);
+          imageUrls.push(downloadRes.url);
+        }
+
+        // Set the main object key
+        const mainKey = `reports/${Date.now()}-batch-report`;
+        setObjectKey(mainKey);
+
+        // Extract from all images at once
+        extractionResult = await extractFromImages(imageUrls);
       }
 
       if (extractionResult?.error) {
@@ -161,75 +211,198 @@ export function MedicalUploader() {
 
   return (
     <div className="space-y-6">
-      {/* File Upload Section */}
-      <div className="medical-card p-6 border-2 border-dashed border-medical-neutral-300 hover:border-medical-primary-400 transition-colors">
+      {/* Modern Upload Options Section */}
+      <div className="modern-upload-card">
         <div className="text-center">
-          <div className="w-12 h-12 bg-medical-primary-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">📄</span>
+          <div className="w-16 h-16 bg-medical-primary-100 rounded-xl flex items-center justify-center mx-auto mb-6">
+            <FileText className="w-8 h-8 text-medical-primary-600" />
           </div>
           
-          <div className="space-y-3">
-            <label htmlFor="medical-file-upload" className="block">
-              <span className="text-lg font-medium text-medical-neutral-900 mb-2 block">
-                Select Medical Report
-              </span>
+          <h2 className="text-xl font-semibold text-medical-neutral-900 mb-2">
+            Upload Medical Report
+          </h2>
+          <p className="text-medical-neutral-600 mb-6">
+            Choose how you'd like to upload your medical report
+          </p>
+          
+          {/* Upload Options */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* File Upload Option */}
+            <label htmlFor="medical-file-upload" className="modern-upload-option cursor-pointer">
+              <div className="flex flex-col items-center p-6 border-2 border-medical-neutral-200 rounded-xl hover:border-medical-primary-400 hover:bg-medical-primary-50 transition-all">
+                <div className="w-12 h-12 bg-medical-primary-100 rounded-lg flex items-center justify-center mb-3">
+                  <Upload className="w-6 h-6 text-medical-primary-600" />
+                </div>
+                <h3 className="font-medium text-medical-neutral-900 mb-1">Choose Files</h3>
+                <p className="text-sm text-medical-neutral-600 text-center">
+                  Upload PDF or images from storage
+                </p>
+              </div>
               <Input 
                 id="medical-file-upload"
                 type="file" 
-                accept="image/*,application/pdf" 
-                capture="environment"
-                onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-                className="file:btn-secondary file:border-0 file:text-medical-neutral-700"
+                accept="image/*,application/pdf"
+                multiple
+                onChange={(e) => handleFilesChange(e.target.files)}
+                className="hidden"
                 aria-describedby="file-help"
               />
             </label>
             
-            <p id="file-help" className="text-sm text-medical-neutral-600">
-              Supports PDF files and images (JPG, PNG). Maximum size: 10MB
-            </p>
-            
-            {file && (
-              <div className="bg-medical-primary-50 border border-medical-primary-200 rounded-lg p-3">
-                <div className="flex items-center space-x-2">
-                  <span className="text-medical-primary-600">📋</span>
-                  <span className="text-sm font-medium text-medical-primary-800">
-                    {file.name}
-                  </span>
-                  <span className="text-xs text-medical-primary-600">
-                    ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                  </span>
+            {/* Camera Option */}
+            <label htmlFor="medical-camera-upload" className="modern-upload-option cursor-pointer">
+              <div className="flex flex-col items-center p-6 border-2 border-medical-neutral-200 rounded-xl hover:border-medical-success-400 hover:bg-medical-success-50 transition-all">
+                <div className="w-12 h-12 bg-medical-success-100 rounded-lg flex items-center justify-center mb-3">
+                  <Camera className="w-6 h-6 text-medical-success-600" />
                 </div>
+                <h3 className="font-medium text-medical-neutral-900 mb-1">Take Photos</h3>
+                <p className="text-sm text-medical-neutral-600 text-center">
+                  Capture multiple photos with camera
+                </p>
               </div>
+              <Input 
+                id="medical-camera-upload"
+                type="file" 
+                accept="image/*"
+                multiple
+                capture="environment"
+                onChange={(e) => handleFilesChange(e.target.files)}
+                className="hidden"
+                aria-describedby="camera-help"
+              />
+            </label>
+
+            {/* Add More Option (only show when files are already selected) */}
+            {files.length > 0 && (
+              <label htmlFor="medical-multi-upload" className="modern-upload-option cursor-pointer">
+                <div className="flex flex-col items-center p-6 border-2 border-medical-warning-200 rounded-xl hover:border-medical-warning-400 hover:bg-medical-warning-50 transition-all">
+                  <div className="w-12 h-12 bg-medical-warning-100 rounded-lg flex items-center justify-center mb-3">
+                    <Plus className="w-6 h-6 text-medical-warning-600" />
+                  </div>
+                  <h3 className="font-medium text-medical-neutral-900 mb-1">Add More</h3>
+                  <p className="text-sm text-medical-neutral-600 text-center">
+                    Add more photos to current batch
+                  </p>
+                </div>
+                <Input 
+                  id="medical-multi-upload"
+                  type="file" 
+                  accept="image/*"
+                  multiple
+                  capture="environment"
+                  onChange={(e) => addMoreFiles(e.target.files)}
+                  className="hidden"
+                />
+              </label>
             )}
           </div>
+
+          {/* File Preview Section */}
+          {files.length > 0 && (
+            <div className="bg-medical-neutral-50 rounded-lg p-4 mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-medical-neutral-900">
+                  Selected Files ({files.length})
+                </h4>
+                <Button
+                  onClick={() => setFiles([])}
+                  variant="ghost"
+                  size="sm"
+                  className="text-medical-neutral-600 hover:text-medical-neutral-900"
+                >
+                  Clear All
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {files.map((file, index) => (
+                  <div key={index} className="relative group">
+                    <div className="aspect-square bg-white rounded-lg border-2 border-medical-neutral-200 overflow-hidden">
+                      {file.type.startsWith('image/') ? (
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onLoad={() => URL.revokeObjectURL(URL.createObjectURL(file))}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-medical-neutral-100">
+                          <FileText className="w-8 h-8 text-medical-neutral-600" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
+                      <button
+                        onClick={() => removeFile(index)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="absolute bottom-1 left-1 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                      {index + 1}
+                    </div>
+                    <div className="absolute top-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded">
+                      {file.type.includes('pdf') ? 'PDF' : 'IMG'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-3 text-sm text-medical-neutral-600">
+                Total size: {(files.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024).toFixed(1)} MB
+              </div>
+            </div>
+          )}
+          
+          <div className="text-left bg-medical-neutral-50 rounded-lg p-4 mb-4">
+            <h4 className="font-medium text-medical-neutral-900 mb-2">Supported Formats:</h4>
+            <ul className="text-sm text-medical-neutral-600 space-y-1">
+              <li>• PDF files (multi-page reports)</li>
+              <li>• Images: JPG, PNG, HEIC</li>
+              <li>• Single or multiple files</li>
+              <li>• Maximum size: 10MB per file</li>
+              <li>• Multiple files processed together for better accuracy</li>
+            </ul>
+          </div>
+          
+
           
           <Button 
             onClick={onUpload} 
-            disabled={!file || busy || extracting || !!savedId}
+            disabled={files.length === 0 || busy || extracting || !!savedId}
             className="btn-primary mt-4 px-8"
             aria-describedby={extracting ? "extraction-status" : undefined}
           >
             {extracting ? (
               <div className="flex items-center space-x-2">
                 <div className="loading-spinner"></div>
-                <span>Extracting Data...</span>
+                <span>
+                  {files.length > 1 ? `Processing ${files.length} Files...` : 'Extracting Data...'}
+                </span>
               </div>
             ) : busy ? (
               <div className="flex items-center space-x-2">
                 <div className="loading-spinner"></div>
-                <span>Uploading...</span>
+                <span>
+                  {files.length > 1 ? `Uploading ${files.length} Files...` : 'Uploading...'}
+                </span>
               </div>
             ) : (
               <div className="flex items-center space-x-2">
                 <span>🔬</span>
-                <span>Upload & Extract</span>
+                <span>
+                  {files.length > 1 ? `Process ${files.length} Files` : 'Upload & Extract'}
+                </span>
               </div>
             )}
           </Button>
           
           {(extracting || busy) && (
             <p id="extraction-status" className="text-sm text-medical-neutral-600 mt-2">
-              Processing your medical report with AI...
+              {files.length > 1 
+                ? `Processing ${files.length} medical files with AI...` 
+                : 'Processing your medical report with AI...'}
             </p>
           )}
         </div>
@@ -423,14 +596,14 @@ export function MedicalUploader() {
                   setSaving(true);
                   setBusy(true);
                   setError(null);
-                  const key = objectKey ?? `reports/${Date.now()}-${file?.name ?? "report"}`;
+                  const key = objectKey ?? `reports/${Date.now()}-${files.length > 1 ? 'batch-report' : (files[0]?.name ?? "report")}`;
                   try {
                     const res = await fetch("/api/reports", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         objectKey: key,
-                        contentType: file?.type ?? "application/octet-stream",
+                        contentType: files.length > 1 ? "image/batch" : (files[0]?.type ?? "application/octet-stream"),
                         extracted: edited,
                       }),
                     });

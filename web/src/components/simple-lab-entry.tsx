@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type CanonicalMetric } from "@/lib/metrics";
 import { UnifiedMedicalEngine, UNIFIED_MEDICAL_PARAMETERS } from "@/lib/unified-medical-engine";
 import { calculateMELD, extractMELDParameters, type MELDResult } from "@/lib/meld-calculator";
@@ -297,15 +297,25 @@ export function SimpleLabEntry() {
                         <Select
                           value={currentData?.unit || param.parameter.standardUnit || ""}
                           onValueChange={(value) => updateLabValue(param.key, 'unit', value)}
-                          placeholder="Unit"
-                          options={Object.entries(param.parameter.unitSystem).map(([unit, info]) => ({
-                            value: unit,
-                            label: unit || 'dimensionless',
-                            description: info.description || `${info.region} standard`,
-                            isStandard: info.isStandard
-                          }))}
-                          className="w-24"
-                        />
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue placeholder="Unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(param.parameter.unitSystem)
+                              .filter(([unit]) => unit && unit.trim() !== '')
+                              .map(([unit, info]) => (
+                                <SelectItem key={unit} value={unit}>
+                                  {unit}
+                                </SelectItem>
+                              ))}
+                            {Object.entries(param.parameter.unitSystem).length === 0 && (
+                              <SelectItem value="dimensionless">
+                                dimensionless
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   );
