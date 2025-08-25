@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { safeQuery } from "@/lib/db-utils";
 import { getCurrentUserId } from "@/lib/auth";
 import { getMedicalPlatform } from "@/lib/medical-platform";
+import { enhancedUnitConverter } from "@/lib/medical-platform/core/enhanced-unit-converter";
 import { z } from "zod";
 
 const Body = z.object({
@@ -197,15 +198,37 @@ export async function POST(req: NextRequest) {
     } catch (fallbackError) {
       console.error('❌ Even fallback processing failed:', fallbackError);
       
-      return NextResponse.json(
-        { 
-          error: "Report processing failed", 
-          details: error instanceof Error ? error.message : String(error),
-          fallback: "Please try again or contact support",
-          timestamp: new Date().toISOString()
-        }, 
-        { status: 500 }
-      );
+      // Create a minimal report as last resort
+      try {
+        const minimalReport = await prisma.reportFile.create({
+          data: {
+            userId: userId,
+            objectKey: data.objectKey,
+            contentType: data.contentType,
+            reportType: data.reportType ?? "Document",
+            reportDate: safeDate,
+            extractedJson: data.extracted ?? undefined,
+          },
+        });
+
+        return NextResponse.json({
+          id: minimalReport.id,
+          processed: false,
+          warning: 'Report saved but processing failed',
+          platform: 'minimal_fallback'
+        });
+      } catch (minimalError) {
+        console.error('❌ Even minimal report creation failed:', minimalError);
+        return NextResponse.json(
+          { 
+            error: "Complete report processing failure", 
+            details: error instanceof Error ? error.message : String(error),
+            fallback: "Please try again or contact support",
+            timestamp: new Date().toISOString()
+          }, 
+          { status: 500 }
+        );
+      }
     }
   }
 }
@@ -228,7 +251,7 @@ async function processLegacyReport(data: any, userId: string, safeDate: Date) {
     },
   });
 
-  // Enhanced legacy metric processing with unit conversion
+  // Enhanced metric processing with unit conversion (using existing schema)
   if (data.extracted?.metrics) {
     const metricsRows = Object.entries(data.extracted.metrics)
       .filter(([, v]) => v !== null)
@@ -253,9 +276,9 @@ async function processLegacyReport(data: any, userId: string, safeDate: Date) {
       return {
         reportId: report.id,
         name: m.name,
+        category: m.category ?? undefined,
         value: converted.value ?? undefined,
         unit: converted.unit ?? undefined,
-        category: m.category ?? undefined,
       };
     });
     await prisma.extractedMetric.createMany({ data: rows });
@@ -308,8 +331,10 @@ async function processLegacyReport(data: any, userId: string, safeDate: Date) {
   });
 }
 
+
+
 /**
- * Apply unit conversion in legacy processing
+ * Apply unit conversion in legacy processing (DEPRECATED - use applyComprehensiveUnitConversion)
  * Safe fallback conversion for critical metrics
  */
 function applyLegacyUnitConversion(metricName: string, value: number | null, unit: string | null): {

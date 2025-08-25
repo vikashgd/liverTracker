@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ExportPdfButton } from "@/components/export-pdf-button";
 import { DeleteReportButton } from "@/components/delete-report-button";
+import { formatMedicalValue, formatValueWithUnit } from "@/lib/medical-display-formatter";
 
 // Enhanced trending chart component for the right panel
 function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
@@ -170,9 +171,28 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
           </div>
           <div className="text-right">
             <div className="text-2xl font-bold text-blue-600">
-              {selectedMetric.value || selectedMetric.textValue || '—'} {selectedMetric.unit || ''}
+              {(() => {
+                if (selectedMetric.value) {
+                  const formatted = formatMedicalValue(selectedMetric.name, selectedMetric.value, selectedMetric.unit);
+                  return `${formatted.displayValue} ${formatted.displayUnit}`;
+                }
+                return `${selectedMetric.textValue || '—'} ${selectedMetric.unit || ''}`;
+              })()}
             </div>
-            <div className="text-xs text-gray-500">Current value</div>
+            <div className="text-xs text-gray-500">
+              Current value
+              {(() => {
+                if (selectedMetric.value) {
+                  const formatted = formatMedicalValue(selectedMetric.name, selectedMetric.value, selectedMetric.unit);
+                  if (formatted.wasConverted) {
+                    return (
+                      <span className="ml-2 text-blue-600 font-medium">(converted)</span>
+                    );
+                  }
+                }
+                return null;
+              })()}
+            </div>
           </div>
         </div>
       </div>
@@ -203,8 +223,28 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
                 </div>
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
                   <p className="text-sm text-blue-700">
-                    <strong>Current Value:</strong> {selectedMetric?.value} {selectedMetric?.unit}
+                    <strong>Current Value:</strong> {(() => {
+                      if (selectedMetric?.value) {
+                        const formatted = formatMedicalValue(selectedMetric.name, selectedMetric.value, selectedMetric.unit);
+                        return `${formatted.displayValue} ${formatted.displayUnit}`;
+                      }
+                      return `${selectedMetric?.value} ${selectedMetric?.unit}`;
+                    })()}
                   </p>
+                  {(() => {
+                    if (selectedMetric?.value) {
+                      const formatted = formatMedicalValue(selectedMetric.name, selectedMetric.value, selectedMetric.unit);
+                      if (formatted.wasConverted && formatted.conversionNote) {
+                        return (
+                          <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                            <span>🔧</span>
+                            <span>{formatted.conversionNote}</span>
+                          </p>
+                        );
+                      }
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             </div>
@@ -221,8 +261,28 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
                 </p>
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 mb-4">
                   <p className="text-sm text-blue-700">
-                    <strong>Current Value:</strong> {selectedMetric?.value} {selectedMetric?.unit}
+                    <strong>Current Value:</strong> {(() => {
+                      if (selectedMetric?.value) {
+                        const formatted = formatMedicalValue(selectedMetric.name, selectedMetric.value, selectedMetric.unit);
+                        return `${formatted.displayValue} ${formatted.displayUnit}`;
+                      }
+                      return `${selectedMetric?.value} ${selectedMetric?.unit}`;
+                    })()}
                   </p>
+                  {(() => {
+                    if (selectedMetric?.value) {
+                      const formatted = formatMedicalValue(selectedMetric.name, selectedMetric.value, selectedMetric.unit);
+                      if (formatted.wasConverted && formatted.conversionNote) {
+                        return (
+                          <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                            <span>🔧</span>
+                            <span>{formatted.conversionNote}</span>
+                          </p>
+                        );
+                      }
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
                   This parameter may be a custom lab test or a new metric not yet supported in our trending system.
@@ -243,8 +303,28 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
                 </p>
                 <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 mb-4">
                   <p className="text-sm text-blue-700">
-                    <strong>Current Value:</strong> {selectedMetric?.value} {selectedMetric?.unit}
+                    <strong>Current Value:</strong> {(() => {
+                      if (selectedMetric?.value) {
+                        const formatted = formatMedicalValue(selectedMetric.name, selectedMetric.value, selectedMetric.unit);
+                        return `${formatted.displayValue} ${formatted.displayUnit}`;
+                      }
+                      return `${selectedMetric?.value} ${selectedMetric?.unit}`;
+                    })()}
                   </p>
+                  {(() => {
+                    if (selectedMetric?.value) {
+                      const formatted = formatMedicalValue(selectedMetric.name, selectedMetric.value, selectedMetric.unit);
+                      if (formatted.wasConverted && formatted.conversionNote) {
+                        return (
+                          <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                            <span>🔧</span>
+                            <span>{formatted.conversionNote}</span>
+                          </p>
+                        );
+                      }
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
                   Historical trending will be available once you have more lab reports with this parameter.
@@ -648,31 +728,55 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                 
                 <div className="p-6">
                   <div className="grid gap-4">
-                    {labs.map((lab: any, index: number) => (
-                      <div 
-                        key={index}
-                        onClick={() => handleLabClick(lab)}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-emerald-50 hover:border-emerald-200 border border-transparent transition-all cursor-pointer group"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="w-3 h-3 bg-emerald-500 rounded-full group-hover:bg-emerald-600 transition-colors"></div>
-                          <div>
-                            <div className="font-semibold text-gray-900 group-hover:text-emerald-700 transition-colors">
-                              {lab.name}
+                    {labs.map((lab: any, index: number) => {
+                      // Apply unit conversion for display (with safe fallback)
+                      const formatted = lab.value ? formatMedicalValue(lab.name, lab.value, lab.unit) : null;
+                      
+                      return (
+                        <div 
+                          key={index}
+                          onClick={() => handleLabClick(lab)}
+                          className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-emerald-50 hover:border-emerald-200 border border-transparent transition-all cursor-pointer group"
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div className="w-3 h-3 bg-emerald-500 rounded-full group-hover:bg-emerald-600 transition-colors"></div>
+                            <div>
+                              <div className="font-semibold text-gray-900 group-hover:text-emerald-700 transition-colors">
+                                {lab.name}
+                                {formatted?.wasConverted && (
+                                  <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                                    converted
+                                  </span>
+                                )}
+                              </div>
+                              {lab.textValue && lab.value && (
+                                <div className="text-sm text-gray-600">{lab.textValue}</div>
+                              )}
+                              {formatted?.wasConverted && formatted.conversionNote && (
+                                <div className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                                  <span>🔧</span>
+                                  <span>{formatted.conversionNote}</span>
+                                </div>
+                              )}
                             </div>
-                            {lab.textValue && lab.value && (
-                              <div className="text-sm text-gray-600">{lab.textValue}</div>
+                          </div>
+                          
+                          <div className="text-right">
+                            <div className="font-bold text-gray-900 text-lg">
+                              {formatted ? 
+                                `${formatted.displayValue} ${formatted.displayUnit}` : 
+                                `${lab.value || lab.textValue || '—'} ${lab.unit || ''}`
+                              }
+                            </div>
+                            {formatted?.wasConverted && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                Original: {formatted.originalValue} {lab.unit}
+                              </div>
                             )}
                           </div>
                         </div>
-                        
-                        <div className="text-right">
-                          <div className="font-bold text-gray-900 text-lg">
-                            {lab.value || lab.textValue || '—'} {lab.unit || ''}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

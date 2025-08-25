@@ -164,8 +164,30 @@ export function PremiumMetricCard({
           })()}
         </div>
         <div className="text-lg text-gray-600 font-medium">
-          {unit}
+          {(() => {
+            const formatted = formatMedicalValue(metric, value, unit);
+            return formatted.displayUnit;
+          })()}
         </div>
+        
+        {/* Conversion Message */}
+        {(() => {
+          const formatted = formatMedicalValue(metric, value, unit);
+          if (formatted.wasConverted && formatted.conversionNote) {
+            return (
+              <div className="mt-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 text-xs text-blue-700">
+                  <span>🔧</span>
+                  <span className="font-medium">Unit Converted:</span>
+                </div>
+                <div className="text-xs text-blue-600 mt-1">
+                  {formatted.conversionNote}
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
       </div>
 
       {/* Progress Bar Visualization */}
@@ -204,6 +226,17 @@ export function PremiumMetricCard({
                 return `${formatted.displayValue} ${formatted.displayUnit}`;
               })()}
             </span>
+            {(() => {
+              const formatted = formatMedicalValue(metric, value, unit);
+              if (formatted.wasConverted) {
+                return (
+                  <span className="ml-2 text-blue-600 font-medium">
+                    (converted)
+                  </span>
+                );
+              }
+              return null;
+            })()}
           </div>
         </div>
       </div>

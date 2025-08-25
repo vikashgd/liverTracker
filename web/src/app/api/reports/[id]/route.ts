@@ -5,14 +5,14 @@ import { GCSStorage } from "@/lib/storage/gcs";
 
 export const runtime = "nodejs";
 
-export async function DELETE(_req: NextRequest, context: unknown) {
+export async function DELETE(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const userId = await getCurrentUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { params } = (context as { params?: { id?: string } }) ?? {};
-  const id = typeof params?.id === "string" ? params.id : "";
+  const params = await context.params;
+  const id = params.id;
   if (!id) return NextResponse.json({ error: "missing id" }, { status: 400 });
   
   const report = await prisma.reportFile.findUnique({ 

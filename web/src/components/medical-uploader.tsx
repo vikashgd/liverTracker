@@ -132,13 +132,18 @@ export function MedicalUploader() {
   const resetUploader = () => {
     const fileInput = document.querySelector('#medical-file-upload') as HTMLInputElement;
     const cameraInput = document.querySelector('#medical-camera-upload') as HTMLInputElement;
-    const multiInput = document.querySelector('#medical-multi-upload') as HTMLInputElement;
     
     if (fileInput) fileInput.value = '';
     if (cameraInput) cameraInput.value = '';
-    if (multiInput) multiInput.value = '';
     
     setFiles([]);
+    setEdited(null);
+    setSavedId(null);
+    setError(null);
+    setObjectKey(null);
+    setBusy(false);
+    setExtracting(false);
+    setSaving(false);
   };
 
   const onUpload = async () => {
@@ -226,7 +231,7 @@ export function MedicalUploader() {
           </p>
           
           {/* Upload Options */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {/* File Upload Option */}
             <label htmlFor="medical-file-upload" className="modern-upload-option cursor-pointer">
               <div className="flex flex-col items-center p-6 border-2 border-medical-neutral-200 rounded-xl hover:border-medical-primary-400 hover:bg-medical-primary-50 transition-all">
@@ -249,7 +254,7 @@ export function MedicalUploader() {
               />
             </label>
             
-            {/* Camera Option */}
+            {/* Camera Option - Works for both taking photos and uploading */}
             <label htmlFor="medical-camera-upload" className="modern-upload-option cursor-pointer">
               <div className="flex flex-col items-center p-6 border-2 border-medical-neutral-200 rounded-xl hover:border-medical-success-400 hover:bg-medical-success-50 transition-all">
                 <div className="w-12 h-12 bg-medical-success-100 rounded-lg flex items-center justify-center mb-3">
@@ -257,7 +262,7 @@ export function MedicalUploader() {
                 </div>
                 <h3 className="font-medium text-medical-neutral-900 mb-1">Take Photos</h3>
                 <p className="text-sm text-medical-neutral-600 text-center">
-                  Capture multiple photos with camera
+                  {files.length > 0 ? 'Add more photos' : 'Capture photos with camera'}
                 </p>
               </div>
               <Input 
@@ -266,35 +271,11 @@ export function MedicalUploader() {
                 accept="image/*"
                 multiple
                 capture="environment"
-                onChange={(e) => handleFilesChange(e.target.files)}
+                onChange={(e) => files.length > 0 ? addMoreFiles(e.target.files) : handleFilesChange(e.target.files)}
                 className="hidden"
                 aria-describedby="camera-help"
               />
             </label>
-
-            {/* Add More Option (only show when files are already selected) */}
-            {files.length > 0 && (
-              <label htmlFor="medical-multi-upload" className="modern-upload-option cursor-pointer">
-                <div className="flex flex-col items-center p-6 border-2 border-medical-warning-200 rounded-xl hover:border-medical-warning-400 hover:bg-medical-warning-50 transition-all">
-                  <div className="w-12 h-12 bg-medical-warning-100 rounded-lg flex items-center justify-center mb-3">
-                    <Plus className="w-6 h-6 text-medical-warning-600" />
-                  </div>
-                  <h3 className="font-medium text-medical-neutral-900 mb-1">Add More</h3>
-                  <p className="text-sm text-medical-neutral-600 text-center">
-                    Add more photos to current batch
-                  </p>
-                </div>
-                <Input 
-                  id="medical-multi-upload"
-                  type="file" 
-                  accept="image/*"
-                  multiple
-                  capture="environment"
-                  onChange={(e) => addMoreFiles(e.target.files)}
-                  className="hidden"
-                />
-              </label>
-            )}
           </div>
 
           {/* File Preview Section */}
@@ -315,38 +296,62 @@ export function MedicalUploader() {
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {files.map((file, index) => (
-                  <div key={index} className="relative group">
-                    <div className="aspect-square bg-white rounded-lg border-2 border-medical-neutral-200 overflow-hidden">
-                      {file.type.startsWith('image/') ? (
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-full object-cover"
-                          onLoad={() => URL.revokeObjectURL(URL.createObjectURL(file))}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-medical-neutral-100">
-                          <FileText className="w-8 h-8 text-medical-neutral-600" />
+                {files.map((file, index) => {
+                  const imageUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+                  
+                  return (
+                    <div key={`${file.name}-${index}`} className="relative group">
+                      <div className="aspect-square bg-white rounded-lg border-2 border-medical-neutral-200 overflow-hidden relative">
+                        {file.type.startsWith('image/') ? (
+                          <img
+                            src={imageUrl!}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              console.error('Image load error:', e);
+                              // Fallback to file icon if image fails to load
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-medical-neutral-100">
+                            <FileText className="w-8 h-8 text-medical-neutral-600 mb-2" />
+                            <span className="text-xs text-medical-neutral-600 text-center px-2">
+                              {file.name.length > 15 ? file.name.substring(0, 15) + '...' : file.name}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Always visible delete button */}
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                          title="Remove this file"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        
+                        {/* File number badge */}
+                        <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                          {index + 1}
                         </div>
-                      )}
+                        
+                        {/* File type badge */}
+                        <div className="absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                          {file.type.includes('pdf') ? 'PDF' : 'IMG'}
+                        </div>
+                      </div>
+                      
+                      {/* File name below preview */}
+                      <div className="mt-2 text-xs text-medical-neutral-600 text-center truncate">
+                        {file.name}
+                      </div>
+                      <div className="text-xs text-medical-neutral-500 text-center">
+                        {(file.size / 1024 / 1024).toFixed(1)} MB
+                      </div>
                     </div>
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
-                      <button
-                        onClick={() => removeFile(index)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="absolute bottom-1 left-1 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                      {index + 1}
-                    </div>
-                    <div className="absolute top-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded">
-                      {file.type.includes('pdf') ? 'PDF' : 'IMG'}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               
               <div className="mt-3 text-sm text-medical-neutral-600">

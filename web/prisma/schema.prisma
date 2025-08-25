@@ -21,6 +21,8 @@ model User {
   reportFiles   ReportFile[]
   sessions      Session[]
   timeline      TimelineEvent[]
+  pdfExports    PdfExport[]
+  auditLogs     AuditLog[]
 }
 
 model PatientProfile {
@@ -108,12 +110,31 @@ model ExtractedMetric {
   id        String     @id @default(cuid())
   reportId  String
   name      String
-  value     Float?
-  unit      String?
-  createdAt DateTime   @default(now())
-  category  String?
-  textValue String?
-  report    ReportFile @relation(fields: [reportId], references: [id])
+  
+  // Standardized values (primary data)
+  value     Float?     // Converted to standard units
+  unit      String?    // Standard unit
+  
+  // Original values (audit trail)
+  originalValue     Float?     // Original extracted value
+  originalUnit      String?    // Original unit from source
+  
+  // Conversion metadata
+  wasConverted      Boolean    @default(false)
+  conversionFactor  Float?     // Factor used for conversion
+  conversionRule    String?    // Rule identifier used
+  conversionDate    DateTime?  // When conversion was applied
+  
+  // Existing fields
+  createdAt         DateTime   @default(now())
+  category          String?
+  textValue         String?
+  
+  // Quality assurance
+  validationStatus  String?    // "valid", "suspicious", "error"
+  validationNotes   String?    // Details about validation
+  
+  report            ReportFile @relation(fields: [reportId], references: [id])
 }
 
 model TimelineEvent {
@@ -125,4 +146,38 @@ model TimelineEvent {
   occurredAt DateTime    @default(now())
   report     ReportFile? @relation(fields: [reportId], references: [id])
   user       User        @relation(fields: [userId], references: [id])
+}
+
+model ReportType {
+  id          String       @id @default(cuid())
+  name        String       @unique // e.g., "Blood Test", "Ultrasound", "CT Scan"
+  category    String       // e.g., "Laboratory", "Imaging", "Clinical"
+  description String?
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model PdfExport {
+  id          String    @id @default(cuid())
+  userId      String
+  objectKey   String    // GCS object key for the generated PDF
+  title       String    // e.g., "Health Summary - Dec 2024"
+  dateRange   String?   // e.g., "Jan 2024 - Dec 2024"
+  reportIds   String[]  // Array of report IDs included in export
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime? // Optional expiration for shared links
+  accessCount Int       @default(0)
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?  // Null for system actions
+  action      String   // e.g., "file_upload", "data_export", "report_view"
+  resourceType String  // e.g., "ReportFile", "ExtractedMetric", "PdfExport"
+  resourceId  String?  // ID of the affected resource
+  details     Json?    // Additional context (IP, user agent, etc.)
+  timestamp   DateTime @default(now())
+  user        User?    @relation(fields: [userId], references: [id])
 }

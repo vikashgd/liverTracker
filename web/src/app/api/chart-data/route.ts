@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { getMedicalPlatform } from '@/lib/medical-platform';
 import { canonicalizeMetricName, type CanonicalMetric } from '@/lib/metrics';
+import { formatMedicalValue } from '@/lib/medical-display-formatter';
 
 export async function POST(request: NextRequest) {
   let metricName = '';
@@ -127,12 +128,24 @@ export async function POST(request: NextRequest) {
     // Get chart data using the Medical Platform (same as dashboard)
     const chartSeries = await platform.getChartData(userId, canonicalMetric);
     
-    // Convert to expected SeriesPoint format (same as dashboard)
-    const seriesData = chartSeries.data.map(point => ({
-      date: point.date.toISOString().split('T')[0],
-      value: point.value,
-      reportCount: (point.metadata as any)?.reportCount || 1
-    }));
+    // Convert to expected SeriesPoint format with unit conversion
+    const seriesData = chartSeries.data.map(point => {
+      // Apply unit conversion for display
+      const formatted = formatMedicalValue(canonicalMetric!, point.value);
+      
+      return {
+        date: point.date.toISOString().split('T')[0],
+        value: formatted.displayValue,
+        originalValue: formatted.originalValue,
+        wasConverted: formatted.wasConverted,
+        conversionNote: formatted.conversionNote,
+        reportCount: (point.metadata as any)?.reportCount || 1
+      };
+    });
+
+    // Get the standard unit for this metric
+    const sampleFormatted = formatMedicalValue(canonicalMetric!, 1);
+    const standardUnit = sampleFormatted.displayUnit;
 
     const logData = {
       originalMetric: metricName,
@@ -154,15 +167,30 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ API: Returning ${seriesData.length} data points for ${canonicalMetric}:`, logData);
 
+    // Check if any conversions were applied
+    const conversionsApplied = seriesData.some(point => point.wasConverted);
+    const conversionMessage = conversionsApplied 
+      ? `Values have been converted to standard units (${standardUnit}) for consistency.`
+      : null;
+
     return NextResponse.json({
       data: seriesData,
-      statistics: chartSeries.statistics,
+      statistics: {
+        ...chartSeries.statistics,
+        // Update statistics with converted values
+        min: Math.min(...seriesData.map(p => p.value)),
+        max: Math.max(...seriesData.map(p => p.value)),
+        average: seriesData.reduce((sum, p) => sum + p.value, 0) / seriesData.length
+      },
       quality: chartSeries.quality,
-      unit: '', // Unit will be determined by the client based on metric type
+      unit: standardUnit,
       metadata: {
         originalMetricName: metricName,
         canonicalMetric: canonicalMetric,
-        isUnknownMetric: false
+        isUnknownMetric: false,
+        conversionsApplied,
+        conversionMessage,
+        standardUnit
       }
     });
 

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from "next/link";
+import { DeleteReportButton } from "./delete-report-button";
 
 interface Report {
   id: string;
@@ -183,7 +184,7 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
     }
 
     if (selectedPeriod) {
-      const now = new Date();
+      const now = Date.now();
       const filterDate = new Date();
       
       switch (selectedPeriod) {
@@ -222,32 +223,29 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
   const formatDateRange = (startDate: Date, endDate: Date) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const longMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     
-    const isSameDay = start.toDateString() === end.toDateString();
+    const isSameDay = start.getDate() === end.getDate() && start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
     const isSameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
     
     if (isSameDay) {
-      return start.toLocaleDateString('en-US', { 
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
-      });
+      return `${longMonths[start.getMonth()]} ${start.getDate()}, ${start.getFullYear()}`;
     } else if (isSameMonth) {
-      return `${start.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}-${end.getDate()}, ${start.getFullYear()}`;
+      return `${longMonths[start.getMonth()]} ${start.getDate()}-${end.getDate()}, ${start.getFullYear()}`;
     } else {
-      return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      return `${months[start.getMonth()]} ${start.getDate()} - ${months[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
     }
   };
 
   const formatReportDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric'
-    });
+    const d = new Date(date);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[d.getMonth()]} ${d.getDate()}`;
   };
 
   const getStatusIndicator = (report: Report) => {
-    const daysSinceUpload = Math.floor((new Date().getTime() - new Date(report.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+    const daysSinceUpload = Math.floor((Date.now() - new Date(report.createdAt).getTime()) / (1000 * 60 * 60 * 24));
     
     if (daysSinceUpload <= 7) return { 
       status: 'New', 
@@ -332,7 +330,7 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                 <div className="text-right">
                   <div className="text-2xl font-bold text-gray-900">
                     {visits.filter(v => {
-                      const daysSince = (new Date().getTime() - v.endDate.getTime()) / (1000 * 60 * 60 * 24);
+                      const daysSince = (Date.now() - v.endDate.getTime()) / (1000 * 60 * 60 * 24);
                       return daysSince <= 30;
                     }).length}
                   </div>
@@ -394,6 +392,7 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search medical records by type, keywords, or file name..."
                 className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500 bg-gray-50 focus:bg-white transition-all duration-200"
+                suppressHydrationWarning
               />
             </div>
 
@@ -405,6 +404,7 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
                   className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-gray-50 hover:bg-white transition-all duration-200"
+                  suppressHydrationWarning
                 >
                   <option value="">All Categories</option>
                   {uniqueTypes.map(type => (
@@ -419,6 +419,7 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
                   className="px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-gray-50 hover:bg-white transition-all duration-200"
+                  suppressHydrationWarning
                 >
                   <option value="">All Time</option>
                   <option value="3m">Last 3 Months</option>
@@ -537,73 +538,131 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                     const reportDate = report.reportDate || report.createdAt;
 
                     return (
-                      <div key={report.id} className="group relative bg-gray-50 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 rounded-xl p-4 transition-all duration-200 border border-gray-100 hover:border-blue-200 hover:shadow-md">
-                        <div className="flex items-center justify-between">
-                          {/* Report Info */}
-                          <div className="flex items-center space-x-4 flex-1">
-                            <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center ${category.bgColor} shadow-sm`}>
-                              <span className="text-xl">{category.icon}</span>
+                      <div key={report.id} className="group relative bg-white hover:bg-gray-50 rounded-lg p-3 sm:p-4 transition-all duration-200 border border-gray-200 hover:border-gray-300 hover:shadow-sm">
+                        {/* Desktop Layout - Horizontal */}
+                        <div className="hidden sm:flex items-center justify-between">
+                          {/* Left Section - Report Info */}
+                          <div className="flex items-center space-x-4 flex-1 min-w-0">
+                            <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${category.bgColor}`}>
+                              <span className="text-lg">{category.icon}</span>
                             </div>
                             
                             <div className="flex-1 min-w-0">
-                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
-                                <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-700 transition-colors">
+                              <div className="flex items-center space-x-3 mb-1">
+                                <h3 className="text-base font-semibold text-gray-900 truncate">
                                   {report.reportType || 'Medical Report'}
                                 </h3>
-                                <div className="flex items-center space-x-3 mt-1 sm:mt-0">
-                                  <span className="text-sm text-gray-500 bg-white px-2 py-1 rounded-lg">
-                                    📅 {formatReportDate(reportDate)}
-                                  </span>
-                                  <div className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium border ${status.color} shadow-sm`}>
-                                    <span className="mr-1">{status.icon}</span>
-                                    {status.status}
-                                  </div>
+                                <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${status.color}`}>
+                                  <span className="mr-1">{status.icon}</span>
+                                  {status.status}
                                 </div>
                               </div>
                               
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                                <div className="flex items-center space-x-4 text-sm text-gray-600">
-                                  <span className="inline-flex items-center bg-white px-3 py-1 rounded-lg border border-gray-200">
-                                    📁 {report.objectKey?.split('/').pop() || 'Unknown file'}
+                              <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                <span className="flex items-center">
+                                  📅 {formatReportDate(reportDate)}
+                                </span>
+                                <span className="flex items-center">
+                                  📁 <span className="ml-1 truncate max-w-[150px]">{report.objectKey?.split('/').pop() || 'Unknown file'}</span>
+                                </span>
+                                {report._count.metrics > 0 && (
+                                  <span className="flex items-center text-green-600">
+                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                                    {report._count.metrics} values
                                   </span>
-                                  {report._count.metrics > 0 && (
-                                    <span className="inline-flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-lg border border-green-200">
-                                      <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                                      {report._count.metrics} values extracted
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                {/* Beautiful Action Buttons */}
-                                <div className="flex items-center space-x-2">
-                                  <Link
-                                    href={`/reports/${report.id}`}
-                                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-all duration-200 hover:shadow-md"
-                                  >
-                                    <span className="mr-2">👁️</span>
-                                    View Details
-                                  </Link>
-                                  <button 
-                                    onClick={async () => {
-                                      if (!report.objectKey) return;
-                                      try {
-                                        const response = await fetch(`/api/storage/sign-download?key=${encodeURIComponent(report.objectKey)}`);
-                                        if (!response.ok) throw new Error('Failed to get download URL');
-                                        const { url } = await response.json();
-                                        window.open(url, '_blank');
-                                      } catch (error) {
-                                        console.error('Download failed:', error);
-                                        alert('Failed to download file. Please try again.');
-                                      }
-                                    }}
-                                    className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 rounded-lg border border-gray-200 transition-all duration-200 hover:shadow-md"
-                                  >
-                                    <span className="mr-2">📥</span>
-                                    Download
-                                  </button>
-                                </div>
+                                )}
                               </div>
                             </div>
+                          </div>
+                          
+                          {/* Right Section - Action Buttons */}
+                          <div className="flex items-center space-x-2 flex-shrink-0">
+                            <Link
+                              href={`/reports/${report.id}`}
+                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                            >
+                              <span className="mr-1">👁️</span>
+                              View Details
+                            </Link>
+                            <button 
+                              onClick={async () => {
+                                if (!report.objectKey) return;
+                                try {
+                                  const response = await fetch(`/api/storage/sign-download?key=${encodeURIComponent(report.objectKey)}`);
+                                  if (!response.ok) throw new Error('Failed to get download URL');
+                                  const { url } = await response.json();
+                                  window.open(url, '_blank');
+                                } catch (error) {
+                                  console.error('Download failed:', error);
+                                  alert('Failed to download file. Please try again.');
+                                }
+                              }}
+                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+                            >
+                              <span className="mr-1">📥</span>
+                              Download
+                            </button>
+                            <DeleteReportButton reportId={report.id} variant="compact" />
+                          </div>
+                        </div>
+
+                        {/* Mobile Layout - Stacked */}
+                        <div className="sm:hidden space-y-3">
+                          {/* Header */}
+                          <div className="flex items-start space-x-3">
+                            <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${category.bgColor}`}>
+                              <span className="text-sm">{category.icon}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-semibold text-gray-900 truncate">
+                                {report.reportType || 'Medical Report'}
+                              </h3>
+                              <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${status.color} mt-1`}>
+                                <span className="mr-1">{status.icon}</span>
+                                {status.status}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Info */}
+                          <div className="space-y-1 text-xs text-gray-600 pl-11">
+                            <div>📅 {formatReportDate(reportDate)}</div>
+                            <div>📁 {report.objectKey?.split('/').pop() || 'Unknown file'}</div>
+                            {report._count.metrics > 0 && (
+                              <div className="text-green-600">
+                                ● {report._count.metrics} values extracted
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Buttons */}
+                          <div className="flex items-center space-x-2 pl-11">
+                            <Link
+                              href={`/reports/${report.id}`}
+                              className="inline-flex items-center px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                            >
+                              <span className="mr-1">👁️</span>
+                              View
+                            </Link>
+                            <button 
+                              onClick={async () => {
+                                if (!report.objectKey) return;
+                                try {
+                                  const response = await fetch(`/api/storage/sign-download?key=${encodeURIComponent(report.objectKey)}`);
+                                  if (!response.ok) throw new Error('Failed to get download URL');
+                                  const { url } = await response.json();
+                                  window.open(url, '_blank');
+                                } catch (error) {
+                                  console.error('Download failed:', error);
+                                  alert('Failed to download file. Please try again.');
+                                }
+                              }}
+                              className="inline-flex items-center px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+                            >
+                              <span className="mr-1">📥</span>
+                              DL
+                            </button>
+                            <DeleteReportButton reportId={report.id} variant="compact" />
                           </div>
                         </div>
                       </div>
