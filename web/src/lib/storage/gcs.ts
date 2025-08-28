@@ -1,6 +1,18 @@
 import { Storage } from "@google-cloud/storage";
 import type { BlobStorage, SignedUrl, SignDownloadParams, SignUploadParams } from "./index";
 
+// Helper function to get signed URL for file access
+export async function getSignedUrl(objectKey: string): Promise<string | null> {
+  try {
+    const storage = new GCSStorage();
+    const signedUrl = await storage.signDownloadURL({ key: objectKey });
+    return signedUrl.url;
+  } catch (error) {
+    console.error('Error getting signed URL:', error);
+    return null;
+  }
+}
+
 export class GCSStorage implements BlobStorage {
   private storage: Storage | null = null;
   private bucketName: string | null = null;
@@ -39,6 +51,13 @@ export class GCSStorage implements BlobStorage {
 
   async signDownloadURL({ key }: SignDownloadParams): Promise<SignedUrl> {
     const file = this.getBucket().file(key);
+    
+    // Check if file exists before generating signed URL
+    const [exists] = await file.exists();
+    if (!exists) {
+      throw new Error(`File not found: ${key}`);
+    }
+    
     const [url] = await file.getSignedUrl({
       version: "v4",
       action: "read",

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ExportPdfButton } from "@/components/export-pdf-button";
 import { DeleteReportButton } from "@/components/delete-report-button";
 import { formatMedicalValue, formatValueWithUnit } from "@/lib/medical-display-formatter";
+import { FileImageDisplay, FilePdfDisplay, FileDownloadDisplay } from "@/components/file-display-components";
 
 // Enhanced trending chart component for the right panel
 function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
@@ -30,7 +31,7 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
     setLoading(true);
     try {
       console.log(`📊 Loading real historical data for ${metric.name}...`);
-      
+
       // Fetch real historical data from Medical Platform
       const response = await fetch('/api/chart-data', {
         method: 'POST',
@@ -47,7 +48,7 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
       }
 
       const chartSeries = await response.json();
-      
+
       console.log(`✅ Loaded ${chartSeries.data.length} data points for ${metric.name}:`, chartSeries);
 
       // Handle different response scenarios
@@ -84,7 +85,7 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
       setChartData(chartData);
     } catch (error) {
       console.error(`❌ Failed to load chart data for ${metric.name}:`, error);
-      
+
       // Show error state with helpful message
       setChartData({
         title: metric.name,
@@ -107,7 +108,7 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
   const getMetricColor = (metricName: string) => {
     const colorMap: { [key: string]: string } = {
       'ALT': '#8b5cf6',
-      'AST': '#06b6d4', 
+      'AST': '#06b6d4',
       'Bilirubin': '#f59e0b',
       'Albumin': '#10b981',
       'Creatinine': '#ef4444',
@@ -333,7 +334,7 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
             </div>
           ) : (
             // Success state - show chart
-            <DashboardStyleChart 
+            <DashboardStyleChart
               data={chartData.data}
               color={chartData.color}
               range={chartData.range}
@@ -368,13 +369,12 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
           </div>
           <div className="bg-gray-50 rounded-lg p-3 text-center">
             <div className="text-xs text-gray-600">Current Status</div>
-            <div className={`text-sm font-semibold ${
-              parseFloat(selectedMetric?.value || '0') >= chartData.range.low && 
-              parseFloat(selectedMetric?.value || '0') <= chartData.range.high
+            <div className={`text-sm font-semibold ${parseFloat(selectedMetric?.value || '0') >= chartData.range.low &&
+                parseFloat(selectedMetric?.value || '0') <= chartData.range.high
                 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {parseFloat(selectedMetric?.value || '0') >= chartData.range.low && 
-               parseFloat(selectedMetric?.value || '0') <= chartData.range.high
+              }`}>
+              {parseFloat(selectedMetric?.value || '0') >= chartData.range.low &&
+                parseFloat(selectedMetric?.value || '0') <= chartData.range.high
                 ? 'Normal' : 'Out of Range'}
             </div>
           </div>
@@ -407,7 +407,7 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
   title: string;
 }) {
   const [selectedPoint, setSelectedPoint] = useState<number | null>(null);
-  
+
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -431,7 +431,7 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
   const values = data.map(d => d.value);
   const dataMin = Math.min(...values);
   const dataMax = Math.max(...values);
-  
+
   // Create a reasonable range that includes both data and reference ranges with proper padding
   const minValue = Math.min(dataMin, range.low) * 0.95;
   const maxValue = Math.max(dataMax, range.high) * 1.05;
@@ -457,11 +457,11 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
           {data.length} data points
         </div>
       </div>
-      
+
       <div className="relative overflow-hidden bg-white rounded-lg border border-gray-200 p-2">
-        <svg 
-          width={width} 
-          height={height} 
+        <svg
+          width={width}
+          height={height}
           viewBox={`0 0 ${width} ${height}`}
           className="mx-auto"
           style={{ maxWidth: '100%', height: 'auto' }}
@@ -469,11 +469,11 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
           {/* Grid */}
           <defs>
             <pattern id="dashboardGrid" width="30" height="30" patternUnits="userSpaceOnUse">
-              <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#f8fafc" strokeWidth="1"/>
+              <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#f8fafc" strokeWidth="1" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#dashboardGrid)" />
-          
+
           {/* Y-axis labels */}
           {(() => {
             // Create 4 evenly spaced Y-axis labels that fit within the chart
@@ -549,7 +549,7 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
             const isOutOfRange = d.value < range.low || d.value > range.high;
             const isSelected = selectedPoint === i;
             const isCurrent = Math.abs(d.value - currentValue) < 0.01;
-            
+
             return (
               <g key={i}>
                 <circle
@@ -562,7 +562,7 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
                   className="cursor-pointer transition-all duration-200"
                   onClick={() => setSelectedPoint(isSelected ? null : i)}
                 />
-                
+
                 {/* Current value indicator */}
                 {isCurrent && (
                   <text
@@ -574,7 +574,7 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
                     Current
                   </text>
                 )}
-                
+
                 {/* Selected point tooltip */}
                 {isSelected && (
                   <g>
@@ -597,7 +597,7 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
                     </text>
                   </g>
                 )}
-                
+
                 {/* Date labels - smart formatting based on available space */}
                 {(i % Math.max(1, Math.floor(data.length / 4)) === 0 || i === data.length - 1) && (
                   <text
@@ -607,23 +607,23 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
                     className="fill-gray-500 text-xs"
                     transform={`rotate(-35 ${getX(i)} ${height - padding.bottom + 20})`}
                   >
-                    {isClient 
+                    {isClient
                       ? (() => {
-                          const date = new Date(d.date);
-                          // If we have many data points or limited space, show month-year format
-                          if (data.length > 6) {
-                            return date.toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              year: '2-digit' 
-                            });
-                          } else {
-                            // For fewer points, show month-day
-                            return date.toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric' 
-                            });
-                          }
-                        })()
+                        const date = new Date(d.date);
+                        // If we have many data points or limited space, show month-year format
+                        if (data.length > 6) {
+                          return date.toLocaleDateString('en-US', {
+                            month: 'short',
+                            year: '2-digit'
+                          });
+                        } else {
+                          // For fewer points, show month-day
+                          return date.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric'
+                          });
+                        }
+                      })()
                       : 'Date'
                     }
                   </text>
@@ -632,7 +632,7 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
             );
           })}
         </svg>
-        
+
         {/* Legend */}
         <div className="flex justify-center mt-3 space-x-4 text-xs">
           <div className="flex items-center space-x-1">
@@ -686,8 +686,8 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Link 
-                href="/reports" 
+              <Link
+                href="/reports"
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -701,7 +701,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <ExportPdfButton reportId={report.id} />
               <DeleteReportButton reportId={report.id} />
@@ -725,15 +725,15 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                   </h2>
                   <p className="text-gray-600 mt-1">Click any parameter to view trending chart</p>
                 </div>
-                
+
                 <div className="p-6">
                   <div className="grid gap-4">
                     {labs.map((lab: any, index: number) => {
                       // Apply unit conversion for display (with safe fallback)
                       const formatted = lab.value ? formatMedicalValue(lab.name, lab.value, lab.unit) : null;
-                      
+
                       return (
-                        <div 
+                        <div
                           key={index}
                           onClick={() => handleLabClick(lab)}
                           className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-emerald-50 hover:border-emerald-200 border border-transparent transition-all cursor-pointer group"
@@ -760,11 +760,11 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                               )}
                             </div>
                           </div>
-                          
+
                           <div className="text-right">
                             <div className="font-bold text-gray-900 text-lg">
-                              {formatted ? 
-                                `${formatted.displayValue} ${formatted.displayUnit}` : 
+                              {formatted ?
+                                `${formatted.displayValue} ${formatted.displayUnit}` :
                                 `${lab.value || lab.textValue || '—'} ${lab.unit || ''}`
                               }
                             </div>
@@ -782,6 +782,31 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
               </div>
             )}
 
+            {/* Original Report File Section */}
+            {report.objectKey && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-100">
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                    <span className="mr-3 text-2xl">📄</span>
+                    Original Report File
+                  </h2>
+                  <p className="text-gray-600 mt-1">
+                    {report.contentType?.includes('image') ? 'Medical report image' : 'Medical report document'}
+                  </p>
+                </div>
+
+                <div className="p-6">
+                  {report.contentType?.includes('image') ? (
+                    <FileImageDisplay objectKey={report.objectKey} fileName={report.objectKey?.split('/').pop() || 'Report'} />
+                  ) : report.contentType?.includes('pdf') ? (
+                    <FilePdfDisplay objectKey={report.objectKey} fileName={report.objectKey?.split('/').pop() || 'Report'} />
+                  ) : (
+                    <FileDownloadDisplay objectKey={report.objectKey} fileName={report.objectKey?.split('/').pop() || 'Report'} contentType={report.contentType} />
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Imaging Results Section */}
             {imaging.length > 0 && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -791,7 +816,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                     Imaging Findings
                   </h2>
                 </div>
-                
+
                 <div className="p-6">
                   <div className="grid gap-4">
                     {imaging.map((finding: any, index: number) => (
@@ -810,7 +835,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                               </div>
                             )}
                           </div>
-                          
+
                           <div className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                             {finding.category || 'Imaging'}
                           </div>
@@ -830,7 +855,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No Structured Data</h3>
                 <p className="text-gray-600 max-w-sm mx-auto">
-                  This report doesn't contain structured lab or imaging data. 
+                  This report doesn't contain structured lab or imaging data.
                   The original document may contain unstructured information.
                 </p>
               </div>
@@ -844,8 +869,8 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                 <span className="mr-2 text-xl">📈</span>
                 Parameter Trending
               </h3>
-              
-              <LabTrendingChart 
+
+              <LabTrendingChart
                 currentMetrics={labs}
                 userId={userId}
                 selectedMetric={selectedLabMetric}
@@ -862,7 +887,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                 <span className="mr-2 text-xl">📋</span>
                 Report Summary
               </h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
                   <div className="flex items-center space-x-3 mb-3">
@@ -883,7 +908,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                     )}
                   </div>
                 </div>
-                
+
                 <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
                   <div className="flex items-center space-x-3 mb-3">
                     <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -903,7 +928,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                   </div>
                 </div>
               </div>
-              
+
               <div className="mt-6 p-4 bg-gray-50 rounded-xl">
                 <div className="flex items-start space-x-3">
                   <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center mt-0.5">
@@ -933,7 +958,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                 <div className="text-sm text-gray-600">See the raw PDF document</div>
               </div>
             </button>
-            
+
             <button className="flex items-center space-x-3 p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors text-left">
               <span className="text-2xl">📧</span>
               <div>
@@ -941,7 +966,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                 <div className="text-sm text-gray-600">Send to your doctor</div>
               </div>
             </button>
-            
+
             <button className="flex items-center space-x-3 p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors text-left">
               <span className="text-2xl">📊</span>
               <div>
@@ -949,7 +974,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                 <div className="text-sm text-gray-600">See how values changed</div>
               </div>
             </button>
-            
+
             <button className="flex items-center space-x-3 p-4 bg-orange-50 rounded-xl hover:bg-orange-100 transition-colors text-left">
               <span className="text-2xl">💾</span>
               <div>
