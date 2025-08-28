@@ -1,0 +1,208 @@
+/* Upload Preview Tab Styles */
+
+.upload-preview-tab {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Upload Options */
+.upload-option {
+  display: block;
+  width: 100%;
+  transition: all 0.2s ease-in-out;
+}
+
+.upload-option:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.upload-option:active {
+  transform: translateY(0);
+}
+
+/* File Preview Section */
+.file-preview-section {
+  border: 1px solid var(--medical-neutral-200);
+  background: var(--medical-neutral-50);
+}
+
+.file-preview-grid {
+  gap: 0.75rem;
+}
+
+.file-preview-item {
+  position: relative;
+}
+
+.file-preview-item .delete-button {
+  opacity: 1;
+  transition: all 0.2s ease-in-out;
+}
+
+.file-preview-item .delete-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+/* Touch targets for mobile */
+@media (max-width: 768px) {
+  .upload-option {
+    min-height: 120px;
+  }
+  
+  .file-preview-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .delete-button {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0.5rem;
+  }
+  
+  .next-button-container .btn-primary {
+    width: 100%;
+    min-height: 56px;
+    font-size: 1.125rem;
+  }
+}
+
+/* Large screens */
+@media (min-width: 1024px) {
+  .file-preview-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Hover effects for desktop */
+@media (hover: hover) {
+  .file-preview-item:hover .delete-button {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+/* Focus styles for accessibility */
+.upload-option:focus-within {
+  outline: 2px solid var(--medical-primary-500);
+  outline-offset: 2px;
+}
+
+.delete-button:focus {
+  outline: 2px solid var(--medical-primary-500);
+  outline-offset: 2px;
+}
+
+/* Animation for file preview items */
+.file-preview-item {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Next button styling */
+.next-button-container {
+  margin-top: 2rem;
+}
+
+.next-button-container .btn-primary {
+  background: linear-gradient(135deg, var(--medical-primary-600), var(--medical-primary-700));
+  border: none;
+  box-shadow: 0 4px 12px rgba(var(--medical-primary-600), 0.3);
+  transition: all 0.2s ease-in-out;
+}
+
+.next-button-container .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(var(--medical-primary-600), 0.4);
+}
+
+.next-button-container .btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Error message styling */
+.error-message {
+  animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Info section styling */
+.info-section {
+  border-left: 4px solid var(--medical-primary-400);
+}
+
+.info-section ul li {
+  position: relative;
+  padding-left: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .upload-preview-tab {
+    padding: 0.75rem;
+  }
+  
+  .upload-option div {
+    padding: 1rem;
+  }
+  
+  .file-preview-section {
+    padding: 0.75rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .upload-option {
+    border-width: 3px;
+  }
+  
+  .file-preview-item {
+    border-width: 3px;
+  }
+  
+  .delete-button {
+    border: 2px solid white;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .upload-option,
+  .delete-button,
+  .next-button-container .btn-primary {
+    transition: none;
+  }
+  
+  .file-preview-item {
+    animation: none;
+  }
+  
+  .error-message {
+    animation: none;
+  }
+}

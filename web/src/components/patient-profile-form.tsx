@@ -73,15 +73,42 @@ export function PatientProfileForm() {
 
   const loadProfile = async () => {
     try {
+      console.log('🔍 Loading profile data...');
       const response = await fetch('/api/profile');
+      console.log('📡 Profile API response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('📊 Profile API response data:', data);
+        
         if (data.profile) {
-          setProfile({ ...defaultProfile, ...data.profile });
+          // Convert ISO datetime strings to YYYY-MM-DD format for HTML date inputs
+          const convertedProfile = { ...defaultProfile, ...data.profile };
+          
+          // Convert date fields from ISO strings to YYYY-MM-DD format
+          if (convertedProfile.dateOfBirth) {
+            convertedProfile.dateOfBirth = new Date(convertedProfile.dateOfBirth).toISOString().split('T')[0];
+          }
+          if (convertedProfile.diagnosisDate) {
+            convertedProfile.diagnosisDate = new Date(convertedProfile.diagnosisDate).toISOString().split('T')[0];
+          }
+          if (convertedProfile.transplantListDate) {
+            convertedProfile.transplantListDate = new Date(convertedProfile.transplantListDate).toISOString().split('T')[0];
+          }
+          if (convertedProfile.dialysisStartDate) {
+            convertedProfile.dialysisStartDate = new Date(convertedProfile.dialysisStartDate).toISOString().split('T')[0];
+          }
+          
+          console.log('✅ Setting profile data with converted dates:', convertedProfile);
+          setProfile(convertedProfile);
+        } else {
+          console.log('⚠️ No profile data found in response');
         }
+      } else {
+        console.error('❌ Profile API error:', response.status, response.statusText);
       }
     } catch (err) {
-      console.error('Failed to load profile:', err);
+      console.error('❌ Failed to load profile:', err);
     } finally {
       setLoading(false);
     }
@@ -198,6 +225,23 @@ export function PatientProfileForm() {
           </div>
         </div>
       </motion.div>
+
+      {/* Debug Information - Remove in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gray-100 border border-gray-300 rounded-lg p-4 text-xs"
+        >
+          <h4 className="font-bold text-gray-800 mb-2">🔍 Debug Info (Development Only)</h4>
+          <div className="space-y-1 text-gray-700">
+            <p><strong>Profile loaded:</strong> {JSON.stringify(profile, null, 2)}</p>
+            <p><strong>Has changes:</strong> {hasChanges ? 'Yes' : 'No'}</p>
+            <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
+            <p><strong>Saving:</strong> {saving ? 'Yes' : 'No'}</p>
+          </div>
+        </motion.div>
+      )}
 
       <AnimatePresence>
         {saving && (

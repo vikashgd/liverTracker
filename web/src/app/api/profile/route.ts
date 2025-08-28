@@ -7,9 +7,12 @@ const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Profile GET request received');
     const session = await getServerSession(authOptions);
+    console.log('👤 Session user:', session?.user?.email);
     
     if (!session?.user?.email) {
+      console.log('❌ No session or email found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -19,21 +22,28 @@ export async function GET(request: NextRequest) {
       include: { profile: true }
     });
 
+    console.log('👤 Found user:', user?.id);
+    console.log('📊 User profile:', user?.profile);
+
     if (!user) {
+      console.log('❌ User not found in database');
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ 
+    const response = { 
       profile: user.profile,
       user: {
         id: user.id,
         name: user.name,
         email: user.email
       }
-    });
+    };
+
+    console.log('✅ Returning profile data:', response);
+    return NextResponse.json(response);
 
   } catch (error) {
-    console.error('Profile GET error:', error);
+    console.error('❌ Profile GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

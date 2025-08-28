@@ -4,7 +4,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { unitConverter, ConversionResult } from '../core/unit-converter';
+import { EnhancedUnitConverter, EnhancedConversionResult } from '../core/enhanced-unit-converter';
 import { MEDICAL_PARAMETERS } from '../core/parameters';
 
 export interface MigrationOptions {
@@ -74,11 +74,13 @@ export interface MigrationSummary {
 
 export class DatabaseMigrationService {
   private prisma: PrismaClient;
+  private unitConverter: EnhancedUnitConverter;
   private startTime: number = 0;
   private batchTimes: number[] = [];
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
+    this.unitConverter = new EnhancedUnitConverter();
   }
 
   /**
@@ -121,7 +123,7 @@ export class DatabaseMigrationService {
       analysis[metric.name].total++;
 
       // Check if conversion is needed
-      const conversionResult = unitConverter.convertMetric(
+      const conversionResult = this.unitConverter.convertForStorage(
         metric.name,
         metric.value,
         metric.unit
@@ -345,7 +347,7 @@ export class DatabaseMigrationService {
 
       try {
         // Apply conversion
-        const conversionResult = unitConverter.convertMetric(
+        const conversionResult = this.unitConverter.convertForStorage(
           record.name,
           record.value,
           record.unit
@@ -435,7 +437,7 @@ export class DatabaseMigrationService {
   /**
    * Validate conversion result
    */
-  private validateConversion(metricName: string, conversionResult: ConversionResult) {
+  private validateConversion(metricName: string, conversionResult: EnhancedConversionResult) {
     const parameter = Object.values(MEDICAL_PARAMETERS).find(p => 
       p.metric.toLowerCase() === metricName.toLowerCase()
     );

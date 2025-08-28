@@ -165,7 +165,7 @@ export function UnifiedAIIntelligenceDashboard({
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Brain className="h-8 w-8" />
-              <h2 className="text-2xl font-bold">🧠 Unified AI Health Intelligence</h2>
+              <h2 className="text-2xl font-bold">AI Health Intelligence</h2>
             </div>
             <p className="text-purple-100 mb-4">
               Advanced pattern recognition, predictive analytics, and personalized recommendations powered by multiple AI engines

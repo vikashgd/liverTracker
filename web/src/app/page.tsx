@@ -100,6 +100,31 @@ export default async function Home() {
             
             <MedicalUploader />
             
+            {/* Enhanced Upload Flow Preview - PROMINENT */}
+            <div className="mt-6 p-6 bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-300 rounded-xl shadow-lg">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Sparkles className="w-8 h-8 text-white" />
+                </div>
+                <h4 className="text-xl font-bold text-gray-900 mb-2">
+                  🚀 NEW: Enhanced 3-Step Upload Flow
+                </h4>
+                <p className="text-gray-700 mb-4">
+                  Experience our mobile-optimized upload process with visual progress tracking, 
+                  processing animations, and step-by-step guidance!
+                </p>
+                <Link 
+                  href="/upload-enhanced"
+                  className="inline-block px-8 py-3 bg-blue-600 text-white text-lg font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                >
+                  🎯 Try Enhanced Flow Now
+                </Link>
+                <p className="text-sm text-gray-600 mt-2">
+                  See the 3-step process: Upload → AI Processing → Review & Save
+                </p>
+              </div>
+            </div>
+
             {/* Modern Quick Actions */}
             <div className="mt-8 pt-6 border-t border-medical-neutral-200">
               <h3 className="font-medium text-medical-neutral-900 mb-4">

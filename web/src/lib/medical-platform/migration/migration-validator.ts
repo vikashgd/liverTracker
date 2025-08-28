@@ -318,7 +318,7 @@ export class MigrationValidator {
     let failedConversions = 0;
 
     // Group by metric
-    const metricGroups = convertedRecords.reduce((groups, record) => {
+    const metricGroups = convertedRecords.reduce((groups: { [key: string]: any[] }, record: any) => {
       if (!groups[record.name]) {
         groups[record.name] = [];
       }
@@ -328,7 +328,7 @@ export class MigrationValidator {
 
     // Validate each metric group
     for (const [metricName, records] of Object.entries(metricGroups)) {
-      const metricResult = await this.validateMetricConversions(metricName, records);
+      const metricResult = await this.validateMetricConversions(metricName, records as any[]);
       byMetric[metricName] = metricResult;
       
       totalConversions += metricResult.totalConversions;
@@ -456,7 +456,7 @@ export class MigrationValidator {
       }
     });
 
-    const metricGroups = convertedRecords.reduce((groups, record) => {
+    const metricGroups = convertedRecords.reduce((groups: { [key: string]: any[] }, record: any) => {
       if (!groups[record.name]) {
         groups[record.name] = [];
       }
@@ -474,7 +474,7 @@ export class MigrationValidator {
 
       if (!parameter) continue;
 
-      const values = records.map(r => r.value).filter(v => v !== null);
+      const values = (records as any[]).map(r => r.value).filter(v => v !== null);
       const { normalRange, criticalRange } = parameter.clinical;
 
       const inNormalRange = values.filter(v => v >= normalRange.min && v <= normalRange.max).length;
@@ -486,7 +486,7 @@ export class MigrationValidator {
       metricCount++;
 
       // Check for extreme values
-      const extremeValues = records.filter(r => 
+      const extremeValues = (records as any[]).filter(r => 
         r.value < criticalRange.min * 0.1 || r.value > criticalRange.max * 10
       );
 
@@ -509,7 +509,7 @@ export class MigrationValidator {
           type: 'extreme_value',
           severity: 'warning',
           message: `High percentage of out-of-range values for ${metricName}`,
-          affectedRecords: records.slice(0, 10).map(r => r.id),
+          affectedRecords: (records as any[]).slice(0, 10).map(r => r.id),
           recommendation: 'Review conversion rules and source data quality'
         });
       }

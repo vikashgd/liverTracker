@@ -87,12 +87,8 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
   const groupReportsIntoVisits = (reports: Report[]): Visit[] => {
     if (reports.length === 0) return [];
 
-    // Sort reports by date (report date first, then created date)
-    const sortedReports = [...reports].sort((a, b) => {
-      const dateA = a.reportDate || a.createdAt;
-      const dateB = b.reportDate || b.createdAt;
-      return new Date(dateB).getTime() - new Date(dateA).getTime();
-    });
+    // Reports are already sorted by the backend, use them as-is
+    const sortedReports = reports;
 
     const visits: Visit[] = [];
     let currentVisit: Report[] = [];
@@ -184,7 +180,7 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
     }
 
     if (selectedPeriod) {
-      const now = Date.now();
+      const now = new Date();
       const filterDate = new Date();
       
       switch (selectedPeriod) {
@@ -586,15 +582,26 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                             </Link>
                             <button 
                               onClick={async () => {
-                                if (!report.objectKey) return;
+                                if (!report.objectKey) {
+                                  alert('No file available for download');
+                                  return;
+                                }
                                 try {
                                   const response = await fetch(`/api/storage/sign-download?key=${encodeURIComponent(report.objectKey)}`);
-                                  if (!response.ok) throw new Error('Failed to get download URL');
+                                  if (!response.ok) {
+                                    const errorData = await response.json().catch(() => ({}));
+                                    if (response.status === 404) {
+                                      alert('File not found. This file may have been deleted or moved.');
+                                    } else {
+                                      alert(`Download failed: ${errorData.message || 'Unknown error'}`);
+                                    }
+                                    return;
+                                  }
                                   const { url } = await response.json();
                                   window.open(url, '_blank');
                                 } catch (error) {
                                   console.error('Download failed:', error);
-                                  alert('Failed to download file. Please try again.');
+                                  alert('Failed to download file. Please check your connection and try again.');
                                 }
                               }}
                               className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
@@ -646,15 +653,26 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                             </Link>
                             <button 
                               onClick={async () => {
-                                if (!report.objectKey) return;
+                                if (!report.objectKey) {
+                                  alert('No file available for download');
+                                  return;
+                                }
                                 try {
                                   const response = await fetch(`/api/storage/sign-download?key=${encodeURIComponent(report.objectKey)}`);
-                                  if (!response.ok) throw new Error('Failed to get download URL');
+                                  if (!response.ok) {
+                                    const errorData = await response.json().catch(() => ({}));
+                                    if (response.status === 404) {
+                                      alert('File not found. This file may have been deleted or moved.');
+                                    } else {
+                                      alert(`Download failed: ${errorData.message || 'Unknown error'}`);
+                                    }
+                                    return;
+                                  }
                                   const { url } = await response.json();
                                   window.open(url, '_blank');
                                 } catch (error) {
                                   console.error('Download failed:', error);
-                                  alert('Failed to download file. Please try again.');
+                                  alert('Failed to download file. Please check your connection and try again.');
                                 }
                               }}
                               className="inline-flex items-center px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"

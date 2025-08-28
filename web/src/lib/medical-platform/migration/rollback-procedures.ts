@@ -383,7 +383,7 @@ export class RollbackService {
       if (unrecoverableRecords.length > 0) {
         await this.prisma.extractedMetric.updateMany({
           where: {
-            id: { in: unrecoverableRecords.map(r => r.id) }
+            id: { in: unrecoverableRecords.map((r: any) => r.id) }
           },
           data: {
             wasConverted: false,

@@ -262,7 +262,7 @@ export class EnhancedUnitConverter {
       // Apply smart range-based conversion if no explicit rule found
       if (!wasConverted) {
         const smartConversion = this.applySmartConversion(parameter, value, unit);
-        if (smartConversion.wasConverted) {
+        if (smartConversion.wasConverted && smartConversion.value !== undefined && smartConversion.unit) {
           convertedValue = smartConversion.value;
           convertedUnit = smartConversion.unit;
           wasConverted = true;

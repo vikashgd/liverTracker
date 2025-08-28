@@ -256,7 +256,7 @@ class MigrationCLI {
     });
 
     console.log('\\n🔍 Validation Status:');
-    validationStats.forEach(stat => {
+    validationStats.forEach((stat: any) => {
       console.log(`  ${stat.validationStatus || 'unknown'}: ${stat._count} records`);
     });
 

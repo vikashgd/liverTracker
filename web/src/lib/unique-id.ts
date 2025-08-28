@@ -1,0 +1,52 @@
+/**
+ * Generates a unique ID that's safe for both server and client rendering
+ */
+export function generateUniqueId(prefix: string = 'id'): string {
+  // Use a combination of timestamp and random number for uniqueness
+  // This approach is safe for both SSR and client-side rendering
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 10000);
+  return `${prefix}-${timestamp}-${random}`;
+}
+
+/**
+ * Generates a unique key for file uploads
+ */
+export function generateFileKey(filename: string, prefix: string = 'reports'): string {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  return `${prefix}/${timestamp}-${random}-${filename}`;
+}
+
+/**
+ * Generates a batch key for multiple file uploads
+ */
+export function generateBatchKey(index: number, filename: string, prefix: string = 'reports'): string {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  return `${prefix}/${timestamp}-batch-${index}-${random}-${filename}`;
+}
+
+/**
+ * Generates a temporary key for PDF page processing
+ */
+export function generateTempPageKey(pageNum: number): string {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  return `tmp/pages/${timestamp}-${random}-${pageNum}.png`;
+}
+
+/**
+ * Generates a report key based on uploaded files
+ */
+export function generateReportKey(uploadedFiles: Array<{ name?: string }>, isBatch: boolean = false): string {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  
+  if (isBatch || uploadedFiles.length > 1) {
+    return `reports/${timestamp}-${random}-batch-report`;
+  } else {
+    const filename = uploadedFiles[0]?.name ?? "report";
+    return `reports/${timestamp}-${random}-${filename}`;
+  }
+}

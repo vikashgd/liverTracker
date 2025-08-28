@@ -107,9 +107,11 @@ export class DataExtractor {
   private async extractFromAIResults(data: any): Promise<MedicalValue[]> {
     const { userId, extracted, reportDate, objectKey } = data;
     const reportId = this.generateReportId();
-    const extractedValues: MedicalValue[] = [];
+    
+    // Collect all potential metrics from both sources
+    const allMetrics = new Map<string, { name: string; value: number; unit?: string; source: string }>();
 
-    // Process structured metrics
+    // Process structured metrics first (higher priority)
     if (extracted.metrics) {
       for (const [metricName, metricData] of Object.entries(extracted.metrics)) {
         if (!metricData || typeof metricData !== 'object') continue;
@@ -117,30 +119,20 @@ export class DataExtractor {
         const { value, unit } = metricData as { value: number; unit?: string };
         if (value === null || value === undefined || isNaN(value)) continue;
 
-        try {
-          const parameter = getParameterByName(metricName);
-          if (!parameter) continue;
-
-          const medicalValue = await this.engine.processValue(
-            parameter.metric,
+        // Use normalized metric name as key for deduplication
+        const parameter = getParameterByName(metricName);
+        if (parameter) {
+          allMetrics.set(parameter.metric, {
+            name: metricName,
             value,
-            unit || null,
-            'ai_extraction',
-            {
-              reportId,
-              userId,
-              extractedText: `AI extracted: ${metricName} = ${value} ${unit || ''}`
-            }
-          );
-
-          extractedValues.push(medicalValue);
-        } catch (error) {
-          console.error(`Error processing AI metric ${metricName}:`, error);
+            unit,
+            source: 'structured_metrics'
+          });
         }
       }
     }
 
-    // Process metricsAll array
+    // Process metricsAll array (lower priority - only add if not already present)
     if (extracted.metricsAll && Array.isArray(extracted.metricsAll)) {
       for (const metric of extracted.metricsAll) {
         if (!metric || typeof metric !== 'object') continue;
@@ -148,33 +140,44 @@ export class DataExtractor {
         const { name, value, unit } = metric;
         if (!name || value === null || value === undefined || isNaN(value)) continue;
 
-        try {
-          const parameter = getParameterByName(name);
-          if (!parameter) continue;
-
-          // Skip if we already processed this metric
-          if (extractedValues.some(v => v.metric === parameter.metric)) continue;
-
-          const medicalValue = await this.engine.processValue(
-            parameter.metric,
-            value,
-            unit || null,
-            'ai_extraction',
-            {
-              reportId,
-              userId,
-              extractedText: `AI extracted: ${name} = ${value} ${unit || ''}`
-            }
-          );
-
-          extractedValues.push(medicalValue);
-        } catch (error) {
-          console.error(`Error processing AI metric ${name}:`, error);
+        const parameter = getParameterByName(name);
+        if (parameter) {
+          // Only add if we don't already have this metric from structured source
+          if (!allMetrics.has(parameter.metric)) {
+            allMetrics.set(parameter.metric, {
+              name,
+              value,
+              unit,
+              source: 'metrics_array'
+            });
+          }
         }
       }
     }
 
-    console.log(`✅ Extractor: Processed ${extractedValues.length} AI extractions`);
+    // Process the deduplicated metrics
+    const extractedValues: MedicalValue[] = [];
+    for (const [metricKey, metricInfo] of allMetrics) {
+      try {
+        const medicalValue = await this.engine.processValue(
+          metricKey as MetricName,
+          metricInfo.value,
+          metricInfo.unit || null,
+          'ai_extraction',
+          {
+            reportId,
+            userId,
+            extractedText: `AI extracted (${metricInfo.source}): ${metricInfo.name} = ${metricInfo.value} ${metricInfo.unit || ''}`
+          }
+        );
+
+        extractedValues.push(medicalValue);
+      } catch (error) {
+        console.error(`Error processing AI metric ${metricInfo.name}:`, error);
+      }
+    }
+
+    console.log(`✅ Extractor: Processed ${extractedValues.length} AI extractions (deduplicated from ${allMetrics.size} unique metrics)`);
     return extractedValues;
   }
 

@@ -49,7 +49,7 @@ export function MedicalHeader() {
 
   const navigationGroups = [
     {
-      name: 'Dashboard',
+      name: 'Liver Dashboard',
       href: '/dashboard',
       icon: BarChart3,
       type: 'single'
@@ -74,19 +74,12 @@ export function MedicalHeader() {
       icon: Calculator,
       type: 'dropdown',
       items: [
+        { name: 'AI Intelligence', href: '/ai-intelligence', icon: Activity },
         { name: 'Medical Scoring', href: '/scoring', icon: Calculator },
         { name: 'Imaging Analysis', href: '/imaging', icon: Scan },
       ]
     },
-    {
-      name: 'Account',
-      icon: User,
-      type: 'dropdown',
-      items: [
-        { name: 'Profile', href: '/profile', icon: User },
-        { name: 'Settings', href: '/settings', icon: Settings },
-      ]
-    },
+
     {
       name: 'Admin',
       icon: Wrench,
@@ -100,10 +93,11 @@ export function MedicalHeader() {
 
   // Flattened navigation for mobile menu
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
+    { name: 'Liver Dashboard', href: '/dashboard', icon: BarChart3 },
     { name: 'Upload Report', href: '/', icon: FileText },
     { name: 'Manual Entry', href: '/manual-entry', icon: Upload },
     { name: 'Reports Library', href: '/reports', icon: FolderOpen },
+    { name: 'AI Intelligence', href: '/ai-intelligence', icon: Activity },
     { name: 'Medical Scoring', href: '/scoring', icon: Calculator },
     { name: 'Imaging Analysis', href: '/imaging', icon: Scan },
     { name: 'Profile', href: '/profile', icon: User },
@@ -221,30 +215,83 @@ export function MedicalHeader() {
 
             {session ? (
               <div className="flex items-center space-x-3">
-                <div className="hidden md:block text-right">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {session.user?.name || session.user?.email}
-                  </p>
-                  <div className="flex items-center space-x-1">
-                    <Shield className="w-3 h-3 text-green-500" />
-                    <p className="text-xs text-slate-500 font-medium">Patient Portal</p>
-                  </div>
-                </div>
                 <div className="relative">
-                  <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
-                    <span className="text-white font-semibold text-sm">
-                      {(session.user?.name?.[0] || session.user?.email?.[0] || 'U').toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                  <button
+                    onClick={() => setOpenDropdown(openDropdown === 'user' ? null : 'user')}
+                    className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="hidden md:block text-right">
+                      <p className="text-sm font-semibold text-slate-900">
+                        {session.user?.name || session.user?.email}
+                      </p>
+                      <div className="flex items-center justify-end space-x-1">
+                        <Shield className="w-3 h-3 text-green-500" />
+                        <p className="text-xs text-slate-500 font-medium">Patient Portal</p>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
+                        <span className="text-white font-semibold text-sm">
+                          {(session.user?.name?.[0] || session.user?.email?.[0] || 'U').toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${
+                      openDropdown === 'user' ? 'rotate-180' : ''
+                    }`} />
+                  </button>
+                  
+                  {openDropdown === 'user' && (
+                    <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-slate-200/60 py-2 z-50 backdrop-blur-sm">
+                      <div className="px-4 py-3 border-b border-slate-100">
+                        <p className="text-sm font-semibold text-slate-900">
+                          {session.user?.name || session.user?.email}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">Patient Portal Access</p>
+                      </div>
+                      
+                      <Link
+                        href="/profile"
+                        onClick={() => setOpenDropdown(null)}
+                        className={`flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${
+                          isCurrentPage('/profile') 
+                            ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600' 
+                            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        <User className="w-4 h-4" />
+                        <span className="font-medium">Profile</span>
+                      </Link>
+                      
+                      <Link
+                        href="/settings"
+                        onClick={() => setOpenDropdown(null)}
+                        className={`flex items-center space-x-3 px-4 py-3 text-sm transition-colors ${
+                          isCurrentPage('/settings') 
+                            ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600' 
+                            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                        }`}
+                      >
+                        <Settings className="w-4 h-4" />
+                        <span className="font-medium">Settings</span>
+                      </Link>
+                      
+                      <div className="border-t border-slate-100 mt-2 pt-2">
+                        <button
+                          onClick={() => {
+                            setOpenDropdown(null);
+                            signOut();
+                          }}
+                          className="flex items-center space-x-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors w-full text-left"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span className="font-medium">Sign Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={() => signOut()}
-                  className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:block">Sign Out</span>
-                </button>
               </div>
             ) : (
               <Link 

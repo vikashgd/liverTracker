@@ -64,7 +64,7 @@ export class MedicalDataPlatform {
       const normalizedData = await this.normalizer.normalize(extractedData);
       
       // Step 3: Validate medical values
-      const validatedData = await this.validator.validateBatch(normalizedData);
+      await this.validator.validateBatch(normalizedData);
       
       // Step 4: Create medical report
       const report = await this.engine.createReport(normalizedData);
@@ -73,7 +73,7 @@ export class MedicalDataPlatform {
       await this.repository.saveReport(report);
       
       // Step 6: Generate insights
-      const insights = await this.insights.analyze(report);
+      await this.insights.analyze(report);
       
       const processingTime = Date.now() - startTime;
       

@@ -61,8 +61,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  let data: z.infer<typeof Body> | undefined;
+  let safeDate: Date | undefined;
+  
   try {
-    const data = Body.parse(await req.json());
+    data = Body.parse(await req.json());
+    
+    safeDate = (() => {
+      const s = data.reportDate ?? data.extracted?.reportDate ?? null;
+      if (!s) return new Date(); // Default to current date
+      const d = new Date(s);
+      return isNaN(d.getTime()) ? new Date() : d;
+    })();
     
     // Initialize the medical platform
     const platform = getMedicalPlatform({
@@ -89,13 +99,6 @@ export async function POST(req: NextRequest) {
         encryptionRequired: true
       }
     });
-
-    const safeDate = (() => {
-      const s = data.reportDate ?? data.extracted?.reportDate ?? null;
-      if (!s) return new Date(); // Default to current date
-      const d = new Date(s);
-      return isNaN(d.getTime()) ? new Date() : d;
-    })();
 
     console.log(`📊 Processing report for user ${userId} with date ${safeDate.toISOString()}`);
 
@@ -185,20 +188,24 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('❌ Report processing error:', error);
     
-    // Try one more time with legacy processing as final fallback
-    try {
-      console.log('🔄 Attempting final fallback to legacy processing...');
-      const fallbackResult = await processLegacyReport(data, userId, safeDate);
-      
-      return NextResponse.json({
-        ...fallbackResult,
-        warning: 'Processed using fallback system due to platform error',
-        platform: 'emergency_fallback'
-      });
-    } catch (fallbackError) {
-      console.error('❌ Even fallback processing failed:', fallbackError);
-      
-      // Create a minimal report as last resort
+    // Only try fallback if we have valid data (not a parsing error)
+    if (data && safeDate) {
+      try {
+        console.log('🔄 Attempting final fallback to legacy processing...');
+        const fallbackResult = await processLegacyReport(data, userId, safeDate);
+        
+        return NextResponse.json({
+          ...fallbackResult,
+          warning: 'Processed using fallback system due to platform error',
+          platform: 'emergency_fallback'
+        });
+      } catch (fallbackError) {
+        console.error('❌ Even fallback processing failed:', fallbackError);
+      }
+    }
+    
+    // Create a minimal report as last resort if we have data
+    if (data) {
       try {
         const minimalReport = await prisma.reportFile.create({
           data: {
@@ -206,7 +213,7 @@ export async function POST(req: NextRequest) {
             objectKey: data.objectKey,
             contentType: data.contentType,
             reportType: data.reportType ?? "Document",
-            reportDate: safeDate,
+            reportDate: safeDate || new Date(),
             extractedJson: data.extracted ?? undefined,
           },
         });
@@ -219,17 +226,19 @@ export async function POST(req: NextRequest) {
         });
       } catch (minimalError) {
         console.error('❌ Even minimal report creation failed:', minimalError);
-        return NextResponse.json(
-          { 
-            error: "Complete report processing failure", 
-            details: error instanceof Error ? error.message : String(error),
-            fallback: "Please try again or contact support",
-            timestamp: new Date().toISOString()
-          }, 
-          { status: 500 }
-        );
       }
     }
+    
+    // Final fallback - return error response
+    return NextResponse.json(
+      { 
+        error: "Complete report processing failure", 
+        details: error instanceof Error ? error.message : String(error),
+        fallback: "Please try again or contact support",
+        timestamp: new Date().toISOString()
+      }, 
+      { status: 500 }
+    );
   }
 }
 
