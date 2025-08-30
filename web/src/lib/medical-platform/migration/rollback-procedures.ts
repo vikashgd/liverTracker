@@ -3,7 +3,7 @@
  * Comprehensive rollback and recovery utilities
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma';
 import { DatabaseMigrationService } from './database-migration-service';
 
 export interface RollbackOptions {
@@ -293,7 +293,7 @@ export class RollbackService {
     const sampleRecords = await this.prisma.extractedMetric.findMany({
       take: 10,
       where: { wasConverted: false },
-      orderBy: { updatedAt: 'desc' }
+      orderBy: { createdAt: 'desc' }
     });
 
     for (const record of sampleRecords) {

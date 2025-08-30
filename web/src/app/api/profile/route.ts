@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth-config';
+import { getCurrentUserId, getCurrentUserFromDb } from '@/lib/auth';
 import { PrismaClient } from '@/generated/prisma';
 
 const prisma = new PrismaClient();
@@ -8,30 +7,31 @@ const prisma = new PrismaClient();
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Profile GET request received');
-    const session = await getServerSession(authOptions);
-    console.log('👤 Session user:', session?.user?.email);
+    const userId = await getCurrentUserId();
     
-    if (!session?.user?.email) {
-      console.log('❌ No session or email found');
+    if (!userId) {
+      console.log('❌ No authenticated user found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Find user and their profile
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      include: { profile: true }
-    });
-
-    console.log('👤 Found user:', user?.id);
-    console.log('📊 User profile:', user?.profile);
-
+    // Get user and their profile using enhanced auth utilities
+    const user = await getCurrentUserFromDb();
+    
     if (!user) {
       console.log('❌ User not found in database');
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Get profile data
+    const profile = await prisma.patientProfile.findUnique({
+      where: { userId: user.id }
+    });
+
+    console.log('👤 Found user:', user.id);
+    console.log('📊 User profile:', profile);
+
     const response = { 
-      profile: user.profile,
+      profile,
       user: {
         id: user.id,
         name: user.name,
@@ -50,19 +50,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const userId = await getCurrentUserId();
     
-    if (!session?.user?.email) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const profileData = await request.json();
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
+    // Verify user exists
+    const user = await getCurrentUserFromDb();
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
@@ -78,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Upsert profile (create or update)
     const profile = await prisma.patientProfile.upsert({
-      where: { userId: user.id },
+      where: { userId: userId },
       update: {
         ...processedData,
         updatedAt: new Date(),
@@ -88,7 +85,7 @@ export async function POST(request: NextRequest) {
           : undefined
       },
       create: {
-        userId: user.id,
+        userId: userId,
         ...processedData,
         completedAt: profileData.dateOfBirth && profileData.gender ? new Date() : null
       }

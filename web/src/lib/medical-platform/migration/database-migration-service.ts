@@ -3,7 +3,7 @@
  * Handles safe migration of existing data to standardized units
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma';
 import { EnhancedUnitConverter, EnhancedConversionResult } from '../core/enhanced-unit-converter';
 import { MEDICAL_PARAMETERS } from '../core/parameters';
 

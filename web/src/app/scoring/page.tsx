@@ -3,8 +3,7 @@ import { ComprehensiveMedicalScoring } from "@/components/comprehensive-medical-
 import { getMedicalPlatform } from "@/lib/medical-platform";
 
 export default async function ScoringPage() {
-  const user = await requireAuth();
-  const userId = user.id;
+  const userId = await requireAuth();
 
   console.log(`🧮 Medical Scoring page loading for user: ${userId}`);
 

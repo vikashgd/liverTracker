@@ -93,8 +93,7 @@ async function loadSeries(userId: string, metric: CanonicalMetric): Promise<Seri
 }
 
 export default async function DashboardPage() {
-  const user = await requireAuth();
-  const userId = user.id;
+  const userId = await requireAuth();
 
   console.log(`🏠 Dashboard loading for user: ${userId}`);
 

@@ -160,27 +160,43 @@ export class DataRepository {
         ...parameter.aliases.alternativeSpellings
       ];
 
-      // Fetch raw data
-      const rawMetrics = await prisma.extractedMetric.findMany({
-        where: {
-          report: { userId },
-          name: { in: allNames },
-          value: { not: null }
-        },
-        include: {
-          report: {
-            select: {
-              reportDate: true,
-              reportType: true,
-              id: true
-            }
+      // Fetch raw data with retry logic for connection issues
+      let rawMetrics: any[] = [];
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          rawMetrics = await prisma.extractedMetric.findMany({
+            where: {
+              report: { userId },
+              name: { in: allNames },
+              value: { not: null }
+            },
+            include: {
+              report: {
+                select: {
+                  reportDate: true,
+                  reportType: true,
+                  id: true
+                }
+              }
+            },
+            orderBy: [
+              { report: { reportDate: 'asc' } },
+              { createdAt: 'asc' }
+            ]
+          });
+          break; // Success, exit retry loop
+        } catch (dbError) {
+          retryCount++;
+          if (retryCount >= maxRetries) {
+            throw dbError;
           }
-        },
-        orderBy: [
-          { report: { reportDate: 'asc' } },
-          { createdAt: 'asc' }
-        ]
-      });
+          console.warn(`Database query attempt ${retryCount} failed, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
 
       console.log(`📊 Repository: Found ${rawMetrics.length} raw records for ${metric}`);
 

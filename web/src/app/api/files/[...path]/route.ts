@@ -3,11 +3,14 @@ import { getSignedUrl } from '@/lib/storage/gcs';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
+    // Await params in Next.js 15
+    const { path } = await params;
+    
     // Reconstruct the full object key from the path segments
-    const objectKey = decodeURIComponent(params.path.join('/'));
+    const objectKey = decodeURIComponent(path.join('/'));
     
     if (!objectKey) {
       return NextResponse.json({ error: 'File path is required' }, { status: 400 });

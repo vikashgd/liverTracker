@@ -1,0 +1,263 @@
+/* Mobile Authentication Styles */
+
+/* Prevent zoom on input focus (iOS) */
+@media screen and (max-width: 640px) {
+  input[type="email"],
+  input[type="password"],
+  input[type="text"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    -webkit-appearance: none;
+    -webkit-border-radius: 8px;
+  }
+}
+
+/* Mobile-specific optimizations */
+.mobile-auth-container {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Touch-friendly buttons */
+.mobile-auth-button {
+  min-height: 48px;
+  min-width: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.mobile-auth-button:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
+}
+
+/* Input field optimizations */
+.mobile-auth-input {
+  min-height: 48px;
+  font-size: 16px;
+  padding: 12px 16px;
+  -webkit-appearance: none;
+  -webkit-border-radius: 8px;
+  border-radius: 8px;
+}
+
+.mobile-auth-input:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+/* Keyboard handling */
+.keyboard-open {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.keyboard-open .mobile-auth-container {
+  height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Viewport height fixes for mobile browsers */
+.mobile-auth-full-height {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .mobile-auth-full-height {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Password visibility toggle */
+.mobile-password-toggle {
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+
+/* Form spacing for mobile */
+@media screen and (max-width: 640px) {
+  .mobile-auth-form {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  
+  .mobile-auth-form .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  .mobile-auth-form .form-group:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* Loading states */
+.mobile-auth-loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.mobile-auth-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error and success messages */
+.mobile-auth-message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.mobile-auth-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.mobile-auth-success {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+}
+
+/* Google button specific styles */
+.mobile-google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 24px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-google-button:hover {
+  background-color: #f9fafb;
+}
+
+.mobile-google-button:active {
+  transform: scale(0.95);
+  transition: transform 0.1s ease;
+}
+
+.mobile-google-button:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Password strength indicator */
+.mobile-password-strength {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.mobile-password-strength-bar {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  background-color: #e5e7eb;
+  transition: background-color 0.3s ease;
+}
+
+.mobile-password-strength-bar.weak {
+  background-color: #ef4444;
+}
+
+.mobile-password-strength-bar.medium {
+  background-color: #f59e0b;
+}
+
+.mobile-password-strength-bar.strong {
+  background-color: #10b981;
+}
+
+/* Safe area handling for devices with notches */
+@supports (padding: max(0px)) {
+  .mobile-auth-container {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Landscape orientation adjustments */
+@media screen and (max-width: 640px) and (orientation: landscape) {
+  .mobile-auth-container {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  
+  .mobile-auth-form {
+    gap: 0.75rem;
+  }
+  
+  .mobile-auth-form .form-group {
+    margin-bottom: 0.75rem;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .mobile-auth-input {
+    border-width: 0.5px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .mobile-auth-container {
+    background-color: #111827;
+    color: #f9fafb;
+  }
+  
+  .mobile-auth-input {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+  
+  .mobile-auth-input::placeholder {
+    color: #9ca3af;
+  }
+  
+  .mobile-google-button {
+    background-color: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+  
+  .mobile-google-button:hover {
+    background-color: #4b5563;
+  }
+}

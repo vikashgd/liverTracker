@@ -137,14 +137,17 @@ export default async function AIIntelligencePage() {
 
   // Convert patient profile to the expected format
   const patientData = patientProfile ? {
-    age: patientProfile.age || undefined,
+    age: patientProfile.dateOfBirth ? 
+      Math.floor((Date.now() - patientProfile.dateOfBirth.getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 
+      undefined,
     gender: patientProfile.gender || undefined,
     weight: patientProfile.weight || undefined,
     height: patientProfile.height || undefined,
-    medicalHistory: patientProfile.medicalHistory || undefined,
-    medications: patientProfile.medications || undefined,
-    allergies: patientProfile.allergies || undefined,
-    lifestyle: patientProfile.lifestyle || undefined,
+    // Note: These fields don't exist in the current schema, removing them
+    // medicalHistory: patientProfile.medicalHistory || undefined,
+    // medications: patientProfile.medications || undefined,
+    // allergies: patientProfile.allergies || undefined,
+    // lifestyle: patientProfile.lifestyle || undefined,
   } : undefined;
 
   return (
@@ -159,8 +162,8 @@ export default async function AIIntelligencePage() {
 
         <UnifiedAIIntelligenceDashboard 
           charts={charts}
-          patientProfile={patientProfile || undefined}
-          patientData={patientData}
+          patientProfile={patientProfile as any || undefined}
+          patientData={patientData as any}
         />
       </div>
     </div>

@@ -16,19 +16,15 @@ export async function GET(req: NextRequest) {
       where: {
         userId,
         OR: [
-          { reportType: { contains: 'ultrasound', mode: 'insensitive' } },
-          { reportType: { contains: 'ct', mode: 'insensitive' } },
-          { reportType: { contains: 'mri', mode: 'insensitive' } },
+          { reportType: { startsWith: 'ultrasound' } },
+          { reportType: { startsWith: 'ct' } },
+          { reportType: { startsWith: 'mri' } },
           { reportType: { equals: 'Ultrasound' } },
           { reportType: { equals: 'CT' } },
           { reportType: { equals: 'MRI' } },
-          {
-            // Also include reports that have imaging data in extracted content
-            extractedJson: {
-              path: ['imaging'],
-              not: {}
-            }
-          }
+          { reportType: { startsWith: 'Ultrasound' } },
+          { reportType: { startsWith: 'CT' } },
+          { reportType: { startsWith: 'MRI' } }
         ]
       },
       orderBy: {

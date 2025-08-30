@@ -1,0 +1,213 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUserId, requireSecureAuth } from "@/lib/auth";
+import { validateSessionSecurity } from "@/lib/session-security";
+
+export interface AuthenticatedRequest extends NextRequest {
+  userId: string;
+}
+
+/**
+ * Middleware to protect API routes with authentication
+ */
+export async function withAuth<T extends any[]>(
+  handler: (request: AuthenticatedRequest, ...args: T) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
+    try {
+      const userId = await getCurrentUserId();
+      
+      if (!userId) {
+        return NextResponse.json(
+          { error: "Authentication required" },
+          { status: 401 }
+        );
+      }
+
+      // Add userId to request object
+      const authenticatedRequest = request as AuthenticatedRequest;
+      authenticatedRequest.userId = userId;
+
+      return await handler(authenticatedRequest, ...args);
+    } catch (error) {
+      console.error('API authentication error:', error);
+      return NextResponse.json(
+        { error: "Authentication failed" },
+        { status: 401 }
+      );
+    }
+  };
+}
+
+/**
+ * Enhanced middleware with session security validation
+ */
+export async function withSecureAuth<T extends any[]>(
+  handler: (request: AuthenticatedRequest, ...args: T) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
+    try {
+      // Validate session security
+      const sessionValidation = await validateSessionSecurity();
+      
+      if (!sessionValidation.valid) {
+        return NextResponse.json(
+          { 
+            error: "Session validation failed",
+            reason: sessionValidation.reason,
+            shouldRedirect: sessionValidation.shouldRedirect
+          },
+          { status: 401 }
+        );
+      }
+
+      const userId = await getCurrentUserId();
+      
+      if (!userId) {
+        return NextResponse.json(
+          { error: "Authentication required" },
+          { status: 401 }
+        );
+      }
+
+      // Add userId to request object
+      const authenticatedRequest = request as AuthenticatedRequest;
+      authenticatedRequest.userId = userId;
+
+      return await handler(authenticatedRequest, ...args);
+    } catch (error) {
+      console.error('API secure authentication error:', error);
+      return NextResponse.json(
+        { error: "Authentication failed" },
+        { status: 401 }
+      );
+    }
+  };
+}
+
+/**
+ * Middleware for admin-only routes
+ */
+export async function withAdminAuth<T extends any[]>(
+  handler: (request: AuthenticatedRequest, ...args: T) => Promise<NextResponse>
+) {
+  return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
+    try {
+      const user = await requireSecureAuth();
+      
+      // In a real application, you'd check user roles/permissions here
+      // For now, we'll just ensure they're authenticated
+      // TODO: Add proper admin role checking
+      
+      const authenticatedRequest = request as AuthenticatedRequest;
+      authenticatedRequest.userId = user.id;
+
+      return await handler(authenticatedRequest, ...args);
+    } catch (error) {
+      console.error('API admin authentication error:', error);
+      return NextResponse.json(
+        { error: "Admin authentication required" },
+        { status: 403 }
+      );
+    }
+  };
+}
+
+/**
+ * Helper to extract and validate request data with authentication
+ */
+export async function withAuthAndValidation<TData, TArgs extends any[]>(
+  request: NextRequest,
+  validator: (data: any) => TData,
+  handler: (userId: string, data: TData, request: NextRequest, ...args: TArgs) => Promise<NextResponse>
+) {
+  return async (...args: TArgs): Promise<NextResponse> => {
+    try {
+      const userId = await getCurrentUserId();
+      
+      if (!userId) {
+        return NextResponse.json(
+          { error: "Authentication required" },
+          { status: 401 }
+        );
+      }
+
+      const rawData = await request.json();
+      const validatedData = validator(rawData);
+
+      return await handler(userId, validatedData, request, ...args);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('validation')) {
+        return NextResponse.json(
+          { error: "Invalid request data", details: error.message },
+          { status: 400 }
+        );
+      }
+      
+      console.error('API auth and validation error:', error);
+      return NextResponse.json(
+        { error: "Request processing failed" },
+        { status: 500 }
+      );
+    }
+  };
+}
+
+/**
+ * Rate limiting helper for API routes
+ */
+export async function withRateLimit<T extends any[]>(
+  handler: (request: NextRequest, ...args: T) => Promise<NextResponse>,
+  options: {
+    windowMs?: number;
+    maxRequests?: number;
+    keyGenerator?: (request: NextRequest) => string;
+  } = {}
+) {
+  const {
+    windowMs = 60000, // 1 minute
+    maxRequests = 100,
+    keyGenerator = (req) => req.headers.get('x-forwarded-for') || 'unknown'
+  } = options;
+
+  // Simple in-memory rate limiting (in production, use Redis or similar)
+  const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+  return async (request: NextRequest, ...args: T): Promise<NextResponse> => {
+    const key = keyGenerator(request);
+    const now = Date.now();
+    const windowStart = now - windowMs;
+
+    // Clean up old entries
+    for (const [k, v] of rateLimitStore.entries()) {
+      if (v.resetTime < windowStart) {
+        rateLimitStore.delete(k);
+      }
+    }
+
+    // Check current rate limit
+    const current = rateLimitStore.get(key);
+    if (current && current.count >= maxRequests) {
+      return NextResponse.json(
+        { 
+          error: "Rate limit exceeded",
+          retryAfter: Math.ceil((current.resetTime - now) / 1000)
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((current.resetTime - now) / 1000).toString()
+          }
+        }
+      );
+    }
+
+    // Update rate limit
+    if (current) {
+      current.count++;
+    } else {
+      rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
+    }
+
+    return await handler(request, ...args);
+  };
+}

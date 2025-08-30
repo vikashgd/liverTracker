@@ -1,0 +1,641 @@
+import { prisma } from '@/lib/db';
+
+// Migration Communication Utilities
+// Handles email templates and communication for user migration
+
+export interface EmailTemplate {
+  subject: string;
+  html: string;
+  text: string;
+}
+
+export interface MigrationEmailData {
+  name: string;
+  email: string;
+  setupUrl: string;
+  deadline?: string;
+  supportEmail: string;
+  platformName: string;
+}
+
+// Email templates for different migration phases
+export const migrationEmailTemplates = {
+  preAnnouncement: (data: MigrationEmailData): EmailTemplate => ({
+    subject: `Important: We're Upgrading Your Account Security`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Authentication System Update</title>
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+              .content { background: white; padding: 20px; }
+              .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+              .highlight { background: #e7f3ff; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0; }
+              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 14px; color: #666; }
+              ul { padding-left: 20px; }
+              li { margin-bottom: 8px; }
+          </style>
+      </head>
+      <body>
+          <div class="header">
+              <h2 style="margin: 0; color: #007bff;">🔐 We're Upgrading Your Account Security</h2>
+          </div>
+          
+          <div class="content">
+              <p>Dear ${data.name || 'Valued User'},</p>
+              
+              <p>We're excited to announce significant improvements to our authentication system that will make your account more secure and easier to access.</p>
+              
+              <div class="highlight">
+                  <h3 style="margin-top: 0;">What's Changing?</h3>
+                  <ul>
+                      <li><strong>Password Authentication:</strong> You can now sign in with a password instead of waiting for email links</li>
+                      <li><strong>Google Sign-In:</strong> Quick and secure sign-in with your Google account</li>
+                      <li><strong>Enhanced Security:</strong> Better protection against unauthorized access</li>
+                      <li><strong>Mobile Optimization:</strong> Improved experience on mobile devices</li>
+                  </ul>
+              </div>
+              
+              <h3>What You Need to Do</h3>
+              <p>When our new system launches, you'll need to set up a password for your account:</p>
+              <ol>
+                  <li>Visit our sign-in page</li>
+                  <li>Click "Set Up Password" next to your email</li>
+                  <li>Create a secure password</li>
+                  <li>Optionally, link your Google account for faster sign-ins</li>
+              </ol>
+              
+              <a href="${data.setupUrl}" class="button">Learn More About the Update</a>
+              
+              <h3>Important Timeline</h3>
+              <ul>
+                  <li><strong>Launch Date:</strong> New authentication system goes live</li>
+                  <li><strong>Migration Period:</strong> 4 weeks to set up your password</li>
+                  <li><strong>Cutoff Date:</strong> Magic link authentication will be discontinued</li>
+              </ul>
+              
+              <p><strong>Don't worry</strong> - your existing account and all your data will remain exactly the same. Only the way you sign in is changing.</p>
+              
+              <p>If you have any questions, please contact our support team at <a href="mailto:${data.supportEmail}">${data.supportEmail}</a>.</p>
+              
+              <p>Thank you for your continued trust in ${data.platformName}.</p>
+          </div>
+          
+          <div class="footer">
+              <p>Best regards,<br>The ${data.platformName} Team</p>
+              <p><small>This is an important security update. Please do not ignore this message.</small></p>
+          </div>
+      </body>
+      </html>
+    `,
+    text: `
+We're Upgrading Your Account Security
+
+Dear ${data.name || 'Valued User'},
+
+We're excited to announce significant improvements to our authentication system that will make your account more secure and easier to access.
+
+What's Changing?
+- Password Authentication: You can now sign in with a password instead of waiting for email links
+- Google Sign-In: Quick and secure sign-in with your Google account
+- Enhanced Security: Better protection against unauthorized access
+- Mobile Optimization: Improved experience on mobile devices
+
+What You Need to Do:
+When our new system launches, you'll need to set up a password for your account:
+1. Visit our sign-in page
+2. Click "Set Up Password" next to your email
+3. Create a secure password
+4. Optionally, link your Google account for faster sign-ins
+
+Learn more: ${data.setupUrl}
+
+Don't worry - your existing account and all your data will remain exactly the same. Only the way you sign in is changing.
+
+If you have any questions, please contact our support team at ${data.supportEmail}.
+
+Thank you for your continued trust in ${data.platformName}.
+
+Best regards,
+The ${data.platformName} Team
+    `
+  }),
+
+  migrationReminder: (data: MigrationEmailData): EmailTemplate => ({
+    subject: `Reminder: Set Up Your Password (Action Required)`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Password Setup Reminder</title>
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ffeaa7; }
+              .content { background: white; padding: 20px; }
+              .button { display: inline-block; background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; font-weight: bold; }
+              .benefits { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0; }
+              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 14px; color: #666; }
+          </style>
+      </head>
+      <body>
+          <div class="header">
+              <h2 style="margin: 0; color: #856404;">⏰ Reminder: Set Up Your Password</h2>
+          </div>
+          
+          <div class="content">
+              <p>Hi ${data.name || 'there'},</p>
+              
+              <p>This is a friendly reminder that our new authentication system is now live, and you haven't set up your password yet.</p>
+              
+              <div class="benefits">
+                  <p><strong>Setting up a password takes less than 2 minutes and gives you:</strong></p>
+                  <p>✓ Faster sign-ins (no more waiting for emails)<br>
+                     ✓ Better security for your account<br>
+                     ✓ Option to sign in with Google</p>
+              </div>
+              
+              <a href="${data.setupUrl}" class="button">Set Up Your Password Now</a>
+              
+              ${data.deadline ? `<p><strong>Important:</strong> Please complete this by ${data.deadline} to ensure uninterrupted access to your account.</p>` : ''}
+              
+              <p>Need help? Reply to this email or contact support at <a href="mailto:${data.supportEmail}">${data.supportEmail}</a>.</p>
+              
+              <p>Thanks for your attention to this important security update.</p>
+          </div>
+          
+          <div class="footer">
+              <p>Best regards,<br>The ${data.platformName} Team</p>
+          </div>
+      </body>
+      </html>
+    `,
+    text: `
+Reminder: Set Up Your Password
+
+Hi ${data.name || 'there'},
+
+This is a friendly reminder that our new authentication system is now live, and you haven't set up your password yet.
+
+Setting up a password takes less than 2 minutes and gives you:
+✓ Faster sign-ins (no more waiting for emails)
+✓ Better security for your account
+✓ Option to sign in with Google
+
+Set up your password now: ${data.setupUrl}
+
+${data.deadline ? `Important: Please complete this by ${data.deadline} to ensure uninterrupted access to your account.` : ''}
+
+Need help? Reply to this email or contact support at ${data.supportEmail}.
+
+Thanks,
+The ${data.platformName} Team
+    `
+  }),
+
+  finalNotice: (data: MigrationEmailData): EmailTemplate => ({
+    subject: `Final Notice: Magic Link Authentication Ending Soon`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Final Migration Notice</title>
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #f8d7da; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #f5c6cb; }
+              .content { background: white; padding: 20px; }
+              .button { display: inline-block; background: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; font-weight: bold; }
+              .urgent { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; }
+              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 14px; color: #666; }
+          </style>
+      </head>
+      <body>
+          <div class="header">
+              <h2 style="margin: 0; color: #721c24;">🚨 Final Notice: Action Required</h2>
+          </div>
+          
+          <div class="content">
+              <p>Hi ${data.name || 'there'},</p>
+              
+              <p><strong>This is your final reminder</strong> that magic link authentication will be discontinued on ${data.deadline || 'the scheduled date'}.</p>
+              
+              <div class="urgent">
+                  <p><strong>To continue accessing your account, you must set up a password before ${data.deadline || 'the deadline'}.</strong></p>
+              </div>
+              
+              <a href="${data.setupUrl}" class="button">Set Up Password Immediately</a>
+              
+              <p><strong>After ${data.deadline || 'the deadline'}, you won't be able to sign in without a password.</strong></p>
+              
+              <p>This process takes less than 2 minutes:</p>
+              <ol>
+                  <li>Click the button above</li>
+                  <li>Enter a secure password</li>
+                  <li>Confirm your password</li>
+                  <li>You're done!</li>
+              </ol>
+              
+              <p><strong>If you need assistance, please contact our support team immediately at <a href="mailto:${data.supportEmail}">${data.supportEmail}</a>.</strong></p>
+              
+              <p>We're here to help ensure you don't lose access to your account.</p>
+          </div>
+          
+          <div class="footer">
+              <p>Urgent regards,<br>The ${data.platformName} Team</p>
+          </div>
+      </body>
+      </html>
+    `,
+    text: `
+Final Notice: Magic Link Authentication Ending Soon
+
+Hi ${data.name || 'there'},
+
+This is your final reminder that magic link authentication will be discontinued on ${data.deadline || 'the scheduled date'}.
+
+TO CONTINUE ACCESSING YOUR ACCOUNT, YOU MUST SET UP A PASSWORD BEFORE ${data.deadline || 'THE DEADLINE'}.
+
+Set up your password now: ${data.setupUrl}
+
+After ${data.deadline || 'the deadline'}, you won't be able to sign in without a password.
+
+This process takes less than 2 minutes:
+1. Click the link above
+2. Enter a secure password
+3. Confirm your password
+4. You're done!
+
+If you need assistance, please contact our support team immediately at ${data.supportEmail}.
+
+We're here to help ensure you don't lose access to your account.
+
+Urgent regards,
+The ${data.platformName} Team
+    `
+  }),
+
+  migrationSuccess: (data: MigrationEmailData): EmailTemplate => ({
+    subject: `Welcome to Our New Authentication System!`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Migration Success</title>
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #d4edda; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #c3e6cb; }
+              .content { background: white; padding: 20px; }
+              .button { display: inline-block; background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+              .features { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 20px 0; }
+              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 14px; color: #666; }
+          </style>
+      </head>
+      <body>
+          <div class="header">
+              <h2 style="margin: 0; color: #155724;">🎉 Welcome to Our New Authentication System!</h2>
+          </div>
+          
+          <div class="content">
+              <p>Hi ${data.name || 'there'},</p>
+              
+              <p><strong>Great news!</strong> You've successfully set up your new password and your account is now more secure than ever.</p>
+              
+              <div class="features">
+                  <p><strong>Here's what you can do now:</strong></p>
+                  <p>✓ Sign in instantly with your email and password<br>
+                     ✓ Use Google Sign-In for even faster access<br>
+                     ✓ Enjoy enhanced security features<br>
+                     ✓ Better mobile experience</p>
+              </div>
+              
+              <a href="${data.setupUrl.replace('/setup-password', '/signin')}" class="button">Sign In Now</a>
+              
+              <p>Your account is now protected with:</p>
+              <ul>
+                  <li>Secure password encryption</li>
+                  <li>Account lockout protection</li>
+                  <li>Session security</li>
+                  <li>Rate limiting protection</li>
+              </ul>
+              
+              <p>If you ever need to change your password or update your security settings, you can do so from your account settings.</p>
+              
+              <p>Thanks for making the switch to our enhanced authentication system!</p>
+          </div>
+          
+          <div class="footer">
+              <p>Securely yours,<br>The ${data.platformName} Team</p>
+          </div>
+      </body>
+      </html>
+    `,
+    text: `
+Welcome to Our New Authentication System!
+
+Hi ${data.name || 'there'},
+
+Great news! You've successfully set up your new password and your account is now more secure than ever.
+
+Here's what you can do now:
+✓ Sign in instantly with your email and password
+✓ Use Google Sign-In for even faster access
+✓ Enjoy enhanced security features
+✓ Better mobile experience
+
+Your next sign-in: ${data.setupUrl.replace('/setup-password', '/signin')}
+
+Your account is now protected with:
+- Secure password encryption
+- Account lockout protection
+- Session security
+- Rate limiting protection
+
+If you ever need to change your password or update your security settings, you can do so from your account settings.
+
+Thanks for making the switch to our enhanced authentication system!
+
+Securely yours,
+The ${data.platformName} Team
+    `
+  }),
+
+  emergencyMigration: (data: MigrationEmailData & { temporaryPassword: string }): EmailTemplate => ({
+    subject: `Emergency Password Setup Completed`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Emergency Password Setup</title>
+          <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ffeaa7; }
+              .content { background: white; padding: 20px; }
+              .button { display: inline-block; background: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; font-weight: bold; }
+              .password-box { background: #f8f9fa; padding: 15px; border: 2px solid #007bff; border-radius: 4px; margin: 20px 0; text-align: center; }
+              .warning { background: #f8d7da; padding: 15px; border-left: 4px solid #dc3545; margin: 20px 0; }
+              .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; font-size: 14px; color: #666; }
+          </style>
+      </head>
+      <body>
+          <div class="header">
+              <h2 style="margin: 0; color: #856404;">🔧 Emergency Password Setup Completed</h2>
+          </div>
+          
+          <div class="content">
+              <p>Hi ${data.name || 'there'},</p>
+              
+              <p>Our support team has completed an emergency password setup for your account to ensure you can continue accessing ${data.platformName}.</p>
+              
+              <div class="password-box">
+                  <p><strong>Your Temporary Password:</strong></p>
+                  <p style="font-size: 18px; font-family: monospace; font-weight: bold; color: #007bff;">${data.temporaryPassword}</p>
+              </div>
+              
+              <div class="warning">
+                  <p><strong>Important Security Notice:</strong></p>
+                  <p>This is a temporary password. You must change it immediately after signing in for security reasons.</p>
+              </div>
+              
+              <p><strong>Next Steps:</strong></p>
+              <ol>
+                  <li>Sign in using your email and the temporary password above</li>
+                  <li>You'll be prompted to create a new password</li>
+                  <li>Choose a strong, unique password</li>
+                  <li>Consider enabling Google Sign-In for added convenience</li>
+              </ol>
+              
+              <a href="${data.setupUrl.replace('/setup-password', '/signin')}" class="button">Sign In Now</a>
+              
+              <p>If you didn't request this emergency setup or have any concerns, please contact our support team immediately at <a href="mailto:${data.supportEmail}">${data.supportEmail}</a>.</p>
+              
+              <p>We apologize for any inconvenience and appreciate your patience during the migration process.</p>
+          </div>
+          
+          <div class="footer">
+              <p>Support Team,<br>The ${data.platformName} Team</p>
+          </div>
+      </body>
+      </html>
+    `,
+    text: `
+Emergency Password Setup Completed
+
+Hi ${data.name || 'there'},
+
+Our support team has completed an emergency password setup for your account to ensure you can continue accessing ${data.platformName}.
+
+Your Temporary Password: ${data.temporaryPassword}
+
+IMPORTANT SECURITY NOTICE:
+This is a temporary password. You must change it immediately after signing in for security reasons.
+
+Next Steps:
+1. Sign in using your email and the temporary password above
+2. You'll be prompted to create a new password
+3. Choose a strong, unique password
+4. Consider enabling Google Sign-In for added convenience
+
+Sign in now: ${data.setupUrl.replace('/setup-password', '/signin')}
+
+If you didn't request this emergency setup or have any concerns, please contact our support team immediately at ${data.supportEmail}.
+
+We apologize for any inconvenience and appreciate your patience during the migration process.
+
+Support Team,
+The ${data.platformName} Team
+    `
+  })
+};
+
+// Migration communication service
+export class MigrationCommunicationService {
+  private static readonly DEFAULT_PLATFORM_NAME = 'Medical Platform';
+  private static readonly DEFAULT_SUPPORT_EMAIL = 'support@medicalplatform.com';
+  private static readonly DEFAULT_BASE_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+  static async sendMigrationEmail(
+    type: keyof typeof migrationEmailTemplates,
+    userEmail: string,
+    userData: Partial<MigrationEmailData> = {}
+  ): Promise<boolean> {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email: userEmail },
+        select: { id: true, name: true, email: true }
+      });
+
+      if (!user) {
+        throw new Error(`User not found: ${userEmail}`);
+      }
+
+      const emailData: MigrationEmailData = {
+        name: user.name || 'Valued User',
+        email: user.email || '',
+        setupUrl: `${this.DEFAULT_BASE_URL}/auth/setup-password`,
+        supportEmail: this.DEFAULT_SUPPORT_EMAIL,
+        platformName: this.DEFAULT_PLATFORM_NAME,
+        ...userData
+      };
+
+      const template = migrationEmailTemplates[type](emailData as any);
+
+      // In a real implementation, you would send the email here
+      // For now, we'll log the email and create a record
+      console.log(`Sending ${type} email to ${userEmail}:`, {
+        subject: template.subject,
+        to: userEmail
+      });
+
+      // Log the email event
+      // TODO: Add securityEvent model to schema if needed
+      // await prisma.securityEvent.create({
+      //   data: {
+      //     type: `migration_email_${type}`,
+      //     userId: user.id,
+      //     ipAddress: '127.0.0.1',
+      //     userAgent: 'Migration Communication Service',
+      //     metadata: {
+      //       emailType: type,
+      //       recipient: userEmail,
+      //       subject: template.subject,
+      //     },
+      //     severity: 'low',
+      //   }
+      // });
+
+      return true;
+    } catch (error) {
+      console.error(`Failed to send ${type} email to ${userEmail}:`, error);
+      return false;
+    }
+  }
+
+  static async sendBulkMigrationEmails(
+    type: keyof typeof migrationEmailTemplates,
+    userEmails: string[],
+    commonData: Partial<MigrationEmailData> = {}
+  ): Promise<{ sent: number; failed: number; results: Array<{ email: string; success: boolean }> }> {
+    const results = await Promise.allSettled(
+      userEmails.map(email => this.sendMigrationEmail(type, email, commonData))
+    );
+
+    const processedResults = results.map((result, index) => ({
+      email: userEmails[index],
+      success: result.status === 'fulfilled' && result.value === true
+    }));
+
+    const sent = processedResults.filter(r => r.success).length;
+    const failed = processedResults.length - sent;
+
+    return { sent, failed, results: processedResults };
+  }
+
+  static async getMigrationEmailStats(): Promise<{
+    totalEmailsSent: number;
+    emailsByType: Record<string, number>;
+    recentEmails: Array<{
+      type: string;
+      recipient: string;
+      sentAt: Date;
+      subject: string;
+    }>;
+  }> {
+    // TODO: Add securityEvent model to schema if needed
+    // const emailEvents = await prisma.securityEvent.findMany({
+    //   where: {
+    //     type: {
+    //       startsWith: 'migration_email_'
+    //     }
+    //   },
+    //   orderBy: { timestamp: 'desc' },
+    //   take: 50
+    // });
+
+    const emailsByType: Record<string, number> = {};
+    
+    // emailEvents.forEach(event => {
+    //   const emailType = event.type.replace('migration_email_', '');
+    //   emailsByType[emailType] = (emailsByType[emailType] || 0) + 1;
+    // });
+
+    const recentEmails: any[] = [];
+    // const recentEmails = emailEvents.slice(0, 10).map(event => ({
+    //   type: event.type.replace('migration_email_', ''),
+    //   recipient: event.metadata?.recipient as string || 'Unknown',
+    //   sentAt: event.timestamp,
+    //   subject: event.metadata?.subject as string || 'Unknown'
+    // }));
+
+    return {
+      totalEmailsSent: 0, // emailEvents.length,
+      emailsByType,
+      recentEmails
+    };
+  }
+}
+
+// Utility functions for migration communication
+export async function scheduleReminderEmails(): Promise<void> {
+  // Find users who need reminders
+  const usersNeedingReminders = await prisma.user.findMany({
+    where: {
+      // TODO: Add password field to User model if needed for migration tracking
+      // password: null,
+      // UserMigration: null,
+      createdAt: {
+        lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
+      }
+    },
+    select: { email: true }
+  });
+
+  const emails = usersNeedingReminders.map(user => user.email).filter((email): email is string => email !== null);
+  
+  if (emails.length > 0) {
+    await MigrationCommunicationService.sendBulkMigrationEmails(
+      'migrationReminder',
+      emails,
+      {
+        deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()
+      }
+    );
+  }
+}
+
+export async function scheduleFinalNotices(): Promise<void> {
+  // Find users who still haven't migrated (final warning)
+  const usersNeedingFinalNotice = await prisma.user.findMany({
+    where: {
+      // TODO: Add password field to User model if needed for migration tracking
+      // password: null,
+      // UserMigration: null,
+      createdAt: {
+        lt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000) // 21 days ago
+      }
+    },
+    select: { email: true }
+  });
+
+  const emails = usersNeedingFinalNotice.map(user => user.email).filter((email): email is string => email !== null);
+  
+  if (emails.length > 0) {
+    await MigrationCommunicationService.sendBulkMigrationEmails(
+      'finalNotice',
+      emails,
+      {
+        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()
+      }
+    );
+  }
+}

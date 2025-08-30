@@ -1,0 +1,641 @@
+import { prisma } from '@/lib/db';
+import bcrypt from 'bcryptjs';
+import { MigrationCommunicationService } from './migration-communication';
+
+// User Migration Strategy
+// Handles the strategic aspects of migrating users from magic link to password authentication
+
+export interface MigrationPhase {
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  description: string;
+  actions: string[];
+}
+
+export interface MigrationConfig {
+  phases: MigrationPhase[];
+  gracePeriodDays: number;
+  reminderIntervalDays: number;
+  emergencyContactEmail: string;
+  rollbackPlan: boolean;
+}
+
+export interface UserMigrationStatus {
+  userId: string;
+  email: string;
+  name: string | null;
+  currentStatus: 'not_started' | 'in_progress' | 'completed' | 'needs_assistance';
+  hasPassword: boolean;
+  hasMigrationRecord: boolean;
+  accountAge: number; // days since account creation
+  lastLoginAt: Date | null;
+  riskLevel: 'low' | 'medium' | 'high';
+  recommendedAction: string;
+}
+
+export interface MigrationMetrics {
+  totalUsers: number;
+  migratedUsers: number;
+  pendingUsers: number;
+  migrationRate: number;
+  averageMigrationTime: number; // hours
+  usersByRiskLevel: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+  migrationMethodBreakdown: {
+    passwordSetup: number;
+    googleOAuth: number;
+    emergencyMigration: number;
+  };
+}
+
+// Default migration configuration
+export const DEFAULT_MIGRATION_CONFIG: MigrationConfig = {
+  phases: [
+    {
+      name: 'Pre-Announcement',
+      startDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // 2 weeks ago
+      endDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
+      description: 'Announce upcoming changes and prepare users',
+      actions: ['send_pre_announcement', 'update_documentation', 'prepare_support_team']
+    },
+    {
+      name: 'Soft Launch',
+      startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
+      endDate: new Date(), // Now
+      description: 'Enable new authentication alongside existing system',
+      actions: ['enable_dual_auth', 'show_migration_prompts', 'send_migration_invitations']
+    },
+    {
+      name: 'Active Migration',
+      startDate: new Date(), // Now
+      endDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // 3 weeks from now
+      description: 'Encourage active migration with reminders',
+      actions: ['send_regular_reminders', 'show_dashboard_prompts', 'provide_migration_support']
+    },
+    {
+      name: 'Final Warning',
+      startDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000), // 3 weeks from now
+      endDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000), // 4 weeks from now
+      description: 'Final warnings before legacy system shutdown',
+      actions: ['send_final_notices', 'block_new_magic_links', 'prepare_emergency_support']
+    },
+    {
+      name: 'Legacy Shutdown',
+      startDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000), // 4 weeks from now
+      endDate: new Date(Date.now() + 35 * 24 * 60 * 60 * 1000), // 5 weeks from now
+      description: 'Disable legacy authentication and provide emergency support',
+      actions: ['disable_magic_links', 'provide_emergency_migration', 'monitor_support_requests']
+    }
+  ],
+  gracePeriodDays: 7,
+  reminderIntervalDays: 3,
+  emergencyContactEmail: 'support@medicalplatform.com',
+  rollbackPlan: true
+};
+
+export class UserMigrationStrategy {
+  private config: MigrationConfig;
+
+  constructor(config: MigrationConfig = DEFAULT_MIGRATION_CONFIG) {
+    this.config = config;
+  }
+
+  // Get current migration phase
+  getCurrentPhase(): MigrationPhase | null {
+    const now = new Date();
+    return this.config.phases.find(phase => 
+      now >= phase.startDate && now <= phase.endDate
+    ) || null;
+  }
+
+  // Get next migration phase
+  getNextPhase(): MigrationPhase | null {
+    const now = new Date();
+    return this.config.phases.find(phase => 
+      now < phase.startDate
+    ) || null;
+  }
+
+  // Assess user migration status
+  async assessUserMigrationStatus(userId: string): Promise<UserMigrationStatus> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      // TODO: Add UserMigration model to schema if needed
+      // include: {
+      //   UserMigration: true
+      // }
+    });
+
+    if (!user) {
+      throw new Error(`User not found: ${userId}`);
+    }
+
+    const accountAge = Math.floor(
+      (Date.now() - user.createdAt.getTime()) / (24 * 60 * 60 * 1000)
+    );
+
+    const hasPassword = false; // TODO: Check password field when available
+    const hasMigrationRecord = false; // TODO: Check UserMigration when available
+
+    let currentStatus: UserMigrationStatus['currentStatus'];
+    let riskLevel: UserMigrationStatus['riskLevel'];
+    let recommendedAction: string;
+
+    if (hasMigrationRecord) {
+      currentStatus = 'completed';
+      riskLevel = 'low';
+      recommendedAction = 'No action needed - migration completed';
+    } else if (hasPassword) {
+      currentStatus = 'completed';
+      riskLevel = 'low';
+      recommendedAction = 'Create migration record for tracking';
+    } else {
+      // User hasn't migrated yet
+      const currentPhase = this.getCurrentPhase();
+      
+      if (!currentPhase) {
+        currentStatus = 'needs_assistance';
+        riskLevel = 'high';
+        recommendedAction = 'Emergency migration required';
+      } else if (currentPhase.name === 'Legacy Shutdown') {
+        currentStatus = 'needs_assistance';
+        riskLevel = 'high';
+        recommendedAction = 'Immediate emergency migration required';
+      } else if (currentPhase.name === 'Final Warning') {
+        currentStatus = 'not_started';
+        riskLevel = 'high';
+        recommendedAction = 'Send final notice and prepare emergency migration';
+      } else if (accountAge > 30) {
+        currentStatus = 'not_started';
+        riskLevel = 'medium';
+        recommendedAction = 'Send targeted migration reminder';
+      } else {
+        currentStatus = 'not_started';
+        riskLevel = 'low';
+        recommendedAction = 'Send standard migration invitation';
+      }
+    }
+
+    return {
+      userId: user.id,
+      email: user.email || '',
+      name: user.name,
+      currentStatus,
+      hasPassword,
+      hasMigrationRecord,
+      accountAge,
+      lastLoginAt: null, // TODO: Add lastLoginAt field when available
+      riskLevel,
+      recommendedAction
+    };
+  }
+
+  // Get migration metrics
+  async getMigrationMetrics(): Promise<MigrationMetrics> {
+    const [
+      totalUsers,
+      usersWithPasswords,
+      migrationRecords,
+      migrationMethods
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { passwordHash: { not: null } } }),
+      prisma.userMigration.count(),
+      prisma.userMigration.groupBy({
+        by: ['migrationMethod'],
+        _count: true
+      })
+    ]);
+
+    const migratedUsers = Math.max(usersWithPasswords, migrationRecords);
+    const pendingUsers = totalUsers - migratedUsers;
+    const migrationRate = totalUsers > 0 ? (migratedUsers / totalUsers) * 100 : 0;
+
+    // Calculate average migration time
+    const recentMigrations = await prisma.userMigration.findMany({
+      where: {
+        migratedAt: {
+          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
+        }
+      },
+      include: {
+        user: {
+          select: { createdAt: true }
+        }
+      }
+    });
+
+    const migrationTimes = recentMigrations.map(migration => 
+      (migration.migratedAt.getTime() - migration.user.createdAt.getTime()) / (60 * 60 * 1000) // hours
+    );
+
+    const averageMigrationTime = migrationTimes.length > 0 
+      ? migrationTimes.reduce((sum, time) => sum + time, 0) / migrationTimes.length
+      : 0;
+
+    // Assess risk levels for pending users
+    const pendingUserStatuses = await Promise.all(
+      (await prisma.user.findMany({
+        where: { passwordHash: null, UserMigration: null },
+        select: { id: true }
+      })).map(user => this.assessUserMigrationStatus(user.id))
+    );
+
+    const usersByRiskLevel = pendingUserStatuses.reduce(
+      (acc, status) => {
+        acc[status.riskLevel]++;
+        return acc;
+      },
+      { low: 0, medium: 0, high: 0 }
+    );
+
+    // Migration method breakdown
+    const migrationMethodBreakdown = migrationMethods.reduce(
+      (acc, method) => {
+        switch (method.migrationMethod) {
+          case 'password_setup':
+            acc.passwordSetup = method._count;
+            break;
+          case 'google_oauth':
+            acc.googleOAuth = method._count;
+            break;
+          case 'emergency_migration':
+            acc.emergencyMigration = method._count;
+            break;
+        }
+        return acc;
+      },
+      { passwordSetup: 0, googleOAuth: 0, emergencyMigration: 0 }
+    );
+
+    return {
+      totalUsers,
+      migratedUsers,
+      pendingUsers,
+      migrationRate,
+      averageMigrationTime,
+      usersByRiskLevel,
+      migrationMethodBreakdown
+    };
+  }
+
+  // Execute migration actions for current phase
+  async executePhaseActions(): Promise<{ success: boolean; actionsExecuted: string[]; errors: string[] }> {
+    const currentPhase = this.getCurrentPhase();
+    
+    if (!currentPhase) {
+      return {
+        success: false,
+        actionsExecuted: [],
+        errors: ['No active migration phase found']
+      };
+    }
+
+    const actionsExecuted: string[] = [];
+    const errors: string[] = [];
+
+    for (const action of currentPhase.actions) {
+      try {
+        await this.executeAction(action);
+        actionsExecuted.push(action);
+      } catch (error) {
+        errors.push(`Failed to execute ${action}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    return {
+      success: errors.length === 0,
+      actionsExecuted,
+      errors
+    };
+  }
+
+  // Execute specific migration action
+  private async executeAction(action: string): Promise<void> {
+    switch (action) {
+      case 'send_pre_announcement':
+        await this.sendPreAnnouncements();
+        break;
+      
+      case 'send_migration_invitations':
+        await this.sendMigrationInvitations();
+        break;
+      
+      case 'send_regular_reminders':
+        await this.sendRegularReminders();
+        break;
+      
+      case 'send_final_notices':
+        await this.sendFinalNotices();
+        break;
+      
+      case 'show_migration_prompts':
+        await this.enableMigrationPrompts();
+        break;
+      
+      case 'block_new_magic_links':
+        await this.blockNewMagicLinks();
+        break;
+      
+      case 'disable_magic_links':
+        await this.disableMagicLinks();
+        break;
+      
+      case 'provide_emergency_migration':
+        await this.setupEmergencyMigration();
+        break;
+      
+      default:
+        console.log(`Action not implemented: ${action}`);
+    }
+  }
+
+  // Action implementations
+  private async sendPreAnnouncements(): Promise<void> {
+    const allUsers = await prisma.user.findMany({
+      select: { email: true }
+    });
+
+    const emails = allUsers.map(user => user.email);
+    
+    await MigrationCommunicationService.sendBulkMigrationEmails(
+      'preAnnouncement',
+      emails
+    );
+  }
+
+  private async sendMigrationInvitations(): Promise<void> {
+    const unmigrated = await prisma.user.findMany({
+      where: {
+        passwordHash: null,
+        UserMigration: null
+      },
+      select: { email: true }
+    });
+
+    const emails = unmigrated.map(user => user.email);
+    
+    if (emails.length > 0) {
+      await MigrationCommunicationService.sendBulkMigrationEmails(
+        'migrationReminder',
+        emails
+      );
+    }
+  }
+
+  private async sendRegularReminders(): Promise<void> {
+    const unmigrated = await prisma.user.findMany({
+      where: {
+        passwordHash: null,
+        UserMigration: null,
+        createdAt: {
+          lt: new Date(Date.now() - this.config.reminderIntervalDays * 24 * 60 * 60 * 1000)
+        }
+      },
+      select: { email: true }
+    });
+
+    const emails = unmigrated.map(user => user.email);
+    
+    if (emails.length > 0) {
+      await MigrationCommunicationService.sendBulkMigrationEmails(
+        'migrationReminder',
+        emails,
+        {
+          deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()
+        }
+      );
+    }
+  }
+
+  private async sendFinalNotices(): Promise<void> {
+    const unmigrated = await prisma.user.findMany({
+      where: {
+        passwordHash: null,
+        UserMigration: null
+      },
+      select: { email: true }
+    });
+
+    const emails = unmigrated.map(user => user.email);
+    
+    if (emails.length > 0) {
+      await MigrationCommunicationService.sendBulkMigrationEmails(
+        'finalNotice',
+        emails,
+        {
+          deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()
+        }
+      );
+    }
+  }
+
+  private async enableMigrationPrompts(): Promise<void> {
+    // This would typically update a feature flag or configuration
+    console.log('Migration prompts enabled in UI');
+  }
+
+  private async blockNewMagicLinks(): Promise<void> {
+    // This would typically update authentication configuration
+    console.log('New magic link generation blocked');
+  }
+
+  private async disableMagicLinks(): Promise<void> {
+    // This would typically update authentication configuration
+    console.log('Magic link authentication disabled');
+  }
+
+  private async setupEmergencyMigration(): Promise<void> {
+    // Enable emergency migration support
+    console.log('Emergency migration support enabled');
+  }
+
+  // Emergency migration for users who need assistance
+  async performEmergencyMigration(userEmail: string, adminUserId: string): Promise<{
+    success: boolean;
+    temporaryPassword?: string;
+    error?: string;
+  }> {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email: userEmail }
+      });
+
+      if (!user) {
+        return { success: false, error: 'User not found' };
+      }
+
+      if (user.passwordHash) {
+        return { success: false, error: 'User already has a password' };
+      }
+
+      // Generate temporary password
+      const temporaryPassword = this.generateTemporaryPassword();
+      const hashedPassword = await bcrypt.hash(temporaryPassword, 12);
+
+      // Update user with temporary password
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: hashedPassword,
+          accountStatus: 'password_reset_required',
+          emailVerified: new Date()
+        }
+      });
+
+      // Create migration record
+      await prisma.userMigration.create({
+        data: {
+          userId: user.id,
+          migrationMethod: 'emergency_migration',
+          previousAuthMethod: 'magic_link',
+          ipAddress: '127.0.0.1',
+          userAgent: 'Emergency Migration System'
+        }
+      });
+
+      // Log the emergency migration
+      await prisma.auditLog.create({
+        data: {
+          action: 'emergency_migration',
+          entityType: 'user',
+          entityId: user.id,
+          userId: adminUserId,
+          metadata: {
+            targetUser: userEmail,
+            reason: 'emergency_migration_support',
+            temporaryPasswordGenerated: true
+          }
+        }
+      });
+
+      // Send notification email
+      await MigrationCommunicationService.sendMigrationEmail(
+        'emergencyMigration',
+        userEmail,
+        { temporaryPassword }
+      );
+
+      return { success: true, temporaryPassword };
+    } catch (error) {
+      console.error('Emergency migration error:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  }
+
+  // Generate secure temporary password
+  private generateTemporaryPassword(): string {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let password = '';
+    
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    return password;
+  }
+
+  // Get migration timeline and progress
+  async getMigrationTimeline(): Promise<{
+    phases: Array<MigrationPhase & { 
+      status: 'completed' | 'active' | 'upcoming';
+      progress: number;
+    }>;
+    overallProgress: number;
+    estimatedCompletion: Date | null;
+  }> {
+    const now = new Date();
+    const metrics = await this.getMigrationMetrics();
+    
+    const phases = this.config.phases.map(phase => {
+      let status: 'completed' | 'active' | 'upcoming';
+      let progress: number;
+      
+      if (now > phase.endDate) {
+        status = 'completed';
+        progress = 100;
+      } else if (now >= phase.startDate && now <= phase.endDate) {
+        status = 'active';
+        const totalDuration = phase.endDate.getTime() - phase.startDate.getTime();
+        const elapsed = now.getTime() - phase.startDate.getTime();
+        progress = Math.min(100, (elapsed / totalDuration) * 100);
+      } else {
+        status = 'upcoming';
+        progress = 0;
+      }
+      
+      return { ...phase, status, progress };
+    });
+
+    const overallProgress = metrics.migrationRate;
+    
+    // Estimate completion based on current migration rate
+    let estimatedCompletion: Date | null = null;
+    if (metrics.pendingUsers > 0 && metrics.averageMigrationTime > 0) {
+      const remainingTime = metrics.pendingUsers * metrics.averageMigrationTime * 60 * 60 * 1000; // ms
+      estimatedCompletion = new Date(Date.now() + remainingTime);
+    }
+
+    return {
+      phases,
+      overallProgress,
+      estimatedCompletion
+    };
+  }
+}
+
+// Utility functions
+export async function createMigrationStrategy(config?: Partial<MigrationConfig>): Promise<UserMigrationStrategy> {
+  const fullConfig = { ...DEFAULT_MIGRATION_CONFIG, ...config };
+  return new UserMigrationStrategy(fullConfig);
+}
+
+export async function runDailyMigrationTasks(): Promise<void> {
+  const strategy = await createMigrationStrategy();
+  
+  try {
+    const result = await strategy.executePhaseActions();
+    
+    console.log('Daily migration tasks completed:', {
+      success: result.success,
+      actionsExecuted: result.actionsExecuted,
+      errors: result.errors
+    });
+    
+    // Log the task execution
+    await prisma.securityEvent.create({
+      data: {
+        type: 'migration_daily_tasks',
+        ipAddress: '127.0.0.1',
+        userAgent: 'Migration Scheduler',
+        metadata: {
+          success: result.success,
+          actionsExecuted: result.actionsExecuted,
+          errors: result.errors
+        },
+        severity: result.success ? 'low' : 'medium'
+      }
+    });
+  } catch (error) {
+    console.error('Failed to run daily migration tasks:', error);
+    
+    await prisma.securityEvent.create({
+      data: {
+        type: 'migration_task_error',
+        ipAddress: '127.0.0.1',
+        userAgent: 'Migration Scheduler',
+        metadata: {
+          error: error instanceof Error ? error.message : 'Unknown error'
+        },
+        severity: 'high'
+      }
+    });
+  }
+}

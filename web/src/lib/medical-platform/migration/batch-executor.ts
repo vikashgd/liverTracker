@@ -3,7 +3,7 @@
  * Real-time batch processing with monitoring, progress tracking, and error recovery
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma';
 import { enhancedUnitConverter, EnhancedConversionResult } from '../core/enhanced-unit-converter';
 import { validateClinically, ClinicalContext } from '../core/clinical-validation';
 
@@ -225,8 +225,8 @@ export class BatchExecutor {
         progress.currentRecord = {
           id: record.id,
           name: record.name,
-          value: record.value,
-          unit: record.unit
+          value: record.value ?? 0,
+          unit: record.unit ?? ''
         };
 
         await this.processRecord(record, batchId, progress);

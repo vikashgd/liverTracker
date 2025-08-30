@@ -1,0 +1,262 @@
+import { prisma } from "@/lib/db";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "./auth-config";
+
+export interface SessionValidationResult {
+  valid: boolean;
+  reason?: string;
+  shouldRedirect?: boolean;
+}
+
+/**
+ * Enhanced session validation with security checks
+ */
+export async function validateSessionSecurity(): Promise<SessionValidationResult> {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.id) {
+      return {
+        valid: false,
+        reason: "No active session",
+        shouldRedirect: true
+      };
+    }
+
+    // Check if user still exists and is not locked
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        email: true,
+        lockedUntil: true,
+        emailVerified: true
+      }
+    });
+
+    if (!user) {
+      return {
+        valid: false,
+        reason: "User no longer exists",
+        shouldRedirect: true
+      };
+    }
+
+    // Check if account is locked
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      return {
+        valid: false,
+        reason: "Account is locked",
+        shouldRedirect: true
+      };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    console.error('Session validation error:', error);
+    return {
+      valid: false,
+      reason: "Session validation failed",
+      shouldRedirect: true
+    };
+  }
+}
+
+/**
+ * Clean up expired sessions from database
+ */
+export async function cleanupExpiredSessions(): Promise<void> {
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    
+    await prisma.session.deleteMany({
+      where: {
+        expires: {
+          lt: new Date()
+        }
+      }
+    });
+
+    // Also clean up very old sessions (older than 30 days)
+    await prisma.session.deleteMany({
+      where: {
+        createdAt: {
+          lt: thirtyDaysAgo
+        }
+      }
+    });
+
+    console.log('Expired sessions cleaned up successfully');
+  } catch (error) {
+    console.error('Session cleanup error:', error);
+  }
+}
+
+/**
+ * Revoke all sessions for a user (useful for security incidents)
+ */
+export async function revokeAllUserSessions(userId: string): Promise<boolean> {
+  try {
+    await prisma.session.deleteMany({
+      where: { userId }
+    });
+
+    // Also clear any accounts that might have refresh tokens
+    await prisma.account.updateMany({
+      where: { userId },
+      data: {
+        refresh_token: null,
+        access_token: null
+      }
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Revoke sessions error:', error);
+    return false;
+  }
+}
+
+/**
+ * Get active sessions for a user
+ */
+export async function getUserActiveSessions(userId: string) {
+  try {
+    const sessions = await prisma.session.findMany({
+      where: {
+        userId,
+        expires: {
+          gt: new Date()
+        }
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        expires: true,
+        // Note: We don't select sessionToken for security
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return sessions;
+  } catch (error) {
+    console.error('Get user sessions error:', error);
+    return [];
+  }
+}
+
+/**
+ * Revoke a specific session
+ */
+export async function revokeSession(sessionId: string, userId: string): Promise<boolean> {
+  try {
+    const result = await prisma.session.deleteMany({
+      where: {
+        id: sessionId,
+        userId // Ensure user can only revoke their own sessions
+      }
+    });
+
+    return result.count > 0;
+  } catch (error) {
+    console.error('Revoke session error:', error);
+    return false;
+  }
+}
+
+/**
+ * Update session activity (for tracking last activity)
+ */
+export async function updateSessionActivity(sessionId: string): Promise<void> {
+  try {
+    await prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        // We could add a lastActivity field to track this
+        // For now, we'll just update the expires time
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // Extend by 30 days
+      }
+    });
+  } catch (error) {
+    console.error('Update session activity error:', error);
+  }
+}
+
+/**
+ * Check for suspicious session activity
+ */
+export async function detectSuspiciousSessionActivity(userId: string): Promise<{
+  suspicious: boolean;
+  reasons: string[];
+}> {
+  try {
+    const sessions = await prisma.session.findMany({
+      where: {
+        userId,
+        expires: { gt: new Date() }
+      },
+      select: {
+        id: true,
+        createdAt: true
+      }
+    });
+
+    const reasons: string[] = [];
+    let suspicious = false;
+
+    // Check for too many concurrent sessions
+    if (sessions.length > 5) {
+      suspicious = true;
+      reasons.push(`High number of concurrent sessions: ${sessions.length}`);
+    }
+
+    // Check for sessions created very recently (potential session hijacking)
+    const recentSessions = sessions.filter(s => 
+      s.createdAt > new Date(Date.now() - 5 * 60 * 1000) // Last 5 minutes
+    );
+
+    if (recentSessions.length > 3) {
+      suspicious = true;
+      reasons.push(`Multiple sessions created recently: ${recentSessions.length} in last 5 minutes`);
+    }
+
+    return { suspicious, reasons };
+  } catch (error) {
+    console.error('Detect suspicious session activity error:', error);
+    return { suspicious: false, reasons: [] };
+  }
+}
+
+/**
+ * Session security middleware helper
+ */
+export async function enforceSessionSecurity(userId: string): Promise<{
+  action: 'allow' | 'revoke' | 'warn';
+  message?: string;
+}> {
+  try {
+    const suspiciousActivity = await detectSuspiciousSessionActivity(userId);
+    
+    if (suspiciousActivity.suspicious) {
+      console.warn(`Suspicious session activity for user ${userId}:`, suspiciousActivity.reasons);
+      
+      // For now, just warn. In production, you might want to:
+      // - Revoke all sessions
+      // - Require re-authentication
+      // - Send security alert email
+      // - Temporarily lock account
+      
+      return {
+        action: 'warn',
+        message: 'Suspicious session activity detected'
+      };
+    }
+
+    return { action: 'allow' };
+  } catch (error) {
+    console.error('Enforce session security error:', error);
+    return { action: 'allow' }; // Fail open
+  }
+}

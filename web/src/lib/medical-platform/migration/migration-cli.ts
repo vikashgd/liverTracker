@@ -5,7 +5,7 @@
  * Command-line interface for database unit conversion migration
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma';
 import { DatabaseMigrationService, MigrationOptions, MigrationProgress } from './database-migration-service';
 
 const prisma = new PrismaClient();

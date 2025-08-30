@@ -1,0 +1,140 @@
+import { redirect } from "next/navigation";
+import { requireAuth, requireSecureAuth } from "@/lib/auth";
+// import { validateSessionSecurity } from "@/lib/auth";
+import { ReactNode } from "react";
+
+export interface ProtectedPageProps {
+  children: ReactNode;
+}
+
+/**
+ * Higher-order component to protect pages with authentication
+ */
+export async function withPageAuth<T extends Record<string, any>>(
+  Component: React.ComponentType<T>,
+  options: {
+    requireSecure?: boolean;
+    redirectTo?: string;
+  } = {}
+) {
+  const { requireSecure = false, redirectTo = "/auth/signin" } = options;
+
+  return async function ProtectedPage(props: T) {
+    try {
+      if (requireSecure) {
+        await requireSecureAuth();
+      } else {
+        await requireAuth();
+      }
+
+      return <Component {...props} />;
+    } catch (error) {
+      console.error('Page authentication error:', error);
+      redirect(redirectTo);
+    }
+  };
+}
+
+/**
+ * Component to wrap protected content with authentication check
+ */
+export async function ProtectedContent({ 
+  children,
+  fallback,
+  requireSecure = false
+}: {
+  children: ReactNode;
+  fallback?: ReactNode;
+  requireSecure?: boolean;
+}) {
+  try {
+    if (requireSecure) {
+      await requireSecureAuth();
+    } else {
+      await requireAuth();
+    }
+
+    return <>{children}</>;
+  } catch (error) {
+    if (fallback) {
+      return <>{fallback}</>;
+    }
+    
+    redirect("/auth/signin");
+  }
+}
+
+/**
+ * Server component for session validation with graceful handling
+ */
+export async function SessionValidator({ 
+  children,
+  onInvalid
+}: {
+  children: ReactNode;
+  onInvalid?: () => void;
+}) {
+  try {
+    const validation = await validateSessionSecurity();
+    
+    if (!validation.valid) {
+      if (onInvalid) {
+        onInvalid();
+      } else {
+        redirect(`/auth/signin?error=SessionInvalid&reason=${encodeURIComponent(validation.reason || 'Unknown')}`);
+      }
+    }
+
+    return <>{children}</>;
+  } catch (error) {
+    console.error('Session validation error:', error);
+    redirect("/auth/signin?error=SessionValidationFailed");
+  }
+}
+
+/**
+ * Utility to check authentication status without redirecting
+ */
+export async function checkAuthStatus(): Promise<{
+  isAuthenticated: boolean;
+  userId?: string;
+  error?: string;
+}> {
+  try {
+    const { getCurrentUserId } = await import("@/lib/auth");
+    const userId = await getCurrentUserId();
+    
+    return {
+      isAuthenticated: !!userId,
+      userId: userId || undefined
+    };
+  } catch (error) {
+    return {
+      isAuthenticated: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Hook-like function for getting current user in server components
+ */
+export async function useServerAuth(): Promise<{
+  user: { id: string; email: string; name?: string } | null;
+  isAuthenticated: boolean;
+}> {
+  try {
+    const { getCurrentUser } = await import("@/lib/auth");
+    const user = await getCurrentUser();
+    
+    return {
+      user,
+      isAuthenticated: !!user
+    };
+  } catch (error) {
+    return {
+      user: null,
+      isAuthenticated: false
+    };
+  }
+}

@@ -7,27 +7,27 @@ declare global {
 // Create Prisma client with enhanced connection handling for mobile/network access
 const createPrismaClient = () => {
   return new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+    log: process.env.NODE_ENV === "development" ? ["error"] : [],
     datasources: {
       db: {
         url: process.env.DATABASE_URL,
       },
     },
-    errorFormat: "pretty",
+    errorFormat: "minimal",
   });
 };
 
 export const prisma: PrismaClient = global.prisma ?? createPrismaClient();
 
-// Ensure connection is established and handle connection errors gracefully
-prisma.$connect().catch((error) => {
-  console.error("Failed to connect to database:", error);
-});
+// Don't connect immediately - let it connect on first use
+// This prevents startup errors when the database is paused
 
-// Handle graceful shutdown
-process.on('beforeExit', async () => {
-  await prisma.$disconnect();
-});
+// Handle graceful shutdown (only in Node.js runtime, not Edge Runtime)
+if (typeof process !== 'undefined' && process.on) {
+  process.on('beforeExit', async () => {
+    await prisma.$disconnect();
+  });
+}
 
 if (process.env.NODE_ENV !== "production") global.prisma = prisma;
 

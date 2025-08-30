@@ -3,7 +3,7 @@
  * Comprehensive analysis tools for database unit conversion migration
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma';
 import { enhancedUnitConverter, EnhancedConversionResult } from '../core/enhanced-unit-converter';
 import { MEDICAL_PARAMETERS } from '../core/parameters';
 

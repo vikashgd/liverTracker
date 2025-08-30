@@ -1,0 +1,318 @@
+import { prismaEdge as prisma } from "@/lib/db-edge";
+import { NextRequest } from "next/server";
+
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  resetTime: Date;
+  error?: string;
+}
+
+export interface LoginAttemptResult {
+  allowed: boolean;
+  attemptsRemaining: number;
+  lockedUntil?: Date;
+  error?: string;
+}
+
+/**
+ * Get client IP address from request
+ */
+export function getClientIP(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  const realIP = request.headers.get('x-real-ip');
+  const remoteAddr = request.headers.get('x-vercel-forwarded-for');
+  
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  
+  return realIP || remoteAddr || 'unknown';
+}
+
+/**
+ * Get user agent from request
+ */
+export function getUserAgent(request: NextRequest): string {
+  return request.headers.get('user-agent') || 'unknown';
+}
+
+/**
+ * Check rate limit for IP address
+ * Allows 10 requests per 15 minutes per IP
+ */
+export async function checkRateLimit(
+  ipAddress: string,
+  windowMinutes: number = 15,
+  maxAttempts: number = 10
+): Promise<RateLimitResult> {
+  try {
+    const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000);
+    
+    // Count recent attempts from this IP
+    const recentAttempts = await prisma.loginAttempt.count({
+      where: {
+        ipAddress: ipAddress,
+        createdAt: {
+          gte: windowStart
+        }
+      }
+    });
+
+    const remaining = Math.max(0, maxAttempts - recentAttempts);
+    const resetTime = new Date(Date.now() + windowMinutes * 60 * 1000);
+
+    return {
+      allowed: recentAttempts < maxAttempts,
+      remaining,
+      resetTime
+    };
+  } catch (error) {
+    console.error('Rate limit check error:', error);
+    return {
+      allowed: true, // Fail open for availability
+      remaining: maxAttempts,
+      resetTime: new Date(Date.now() + windowMinutes * 60 * 1000),
+      error: 'Rate limit check failed'
+    };
+  }
+}
+
+/**
+ * Check if user account is locked due to failed login attempts
+ */
+export async function checkAccountLockout(email: string): Promise<LoginAttemptResult> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: {
+        id: true,
+        loginAttempts: true,
+        lockedUntil: true
+      }
+    });
+
+    if (!user) {
+      // Don't reveal if user exists or not
+      return {
+        allowed: true,
+        attemptsRemaining: 5
+      };
+    }
+
+    // Check if account is currently locked
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      return {
+        allowed: false,
+        attemptsRemaining: 0,
+        lockedUntil: user.lockedUntil,
+        error: 'Account is temporarily locked'
+      };
+    }
+
+    // Calculate remaining attempts (max 5 failed attempts before lockout)
+    const maxAttempts = 5;
+    const attemptsRemaining = Math.max(0, maxAttempts - user.loginAttempts);
+
+    return {
+      allowed: user.loginAttempts < maxAttempts,
+      attemptsRemaining
+    };
+  } catch (error) {
+    console.error('Account lockout check error:', error);
+    return {
+      allowed: true, // Fail open for availability
+      attemptsRemaining: 5,
+      error: 'Lockout check failed'
+    };
+  }
+}
+
+/**
+ * Record a login attempt (success or failure)
+ */
+export async function recordLoginAttempt(
+  email: string,
+  success: boolean,
+  ipAddress: string,
+  userAgent: string
+): Promise<void> {
+  try {
+    // Record the attempt
+    await prisma.loginAttempt.create({
+      data: {
+        email: email.toLowerCase(),
+        success,
+        ipAddress,
+        userAgent
+      }
+    });
+
+    // Update user's login attempt counter and lock status if needed
+    if (!success) {
+      const user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+        select: { id: true, loginAttempts: true }
+      });
+
+      if (user) {
+        const newAttemptCount = user.loginAttempts + 1;
+        const shouldLock = newAttemptCount >= 5;
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            loginAttempts: newAttemptCount,
+            ...(shouldLock && {
+              lockedUntil: new Date(Date.now() + 15 * 60 * 1000) // Lock for 15 minutes
+            })
+          }
+        });
+      }
+    } else {
+      // Reset login attempts on successful login
+      await prisma.user.updateMany({
+        where: { email: email.toLowerCase() },
+        data: {
+          loginAttempts: 0,
+          lockedUntil: null,
+          lastLoginAt: new Date()
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Record login attempt error:', error);
+    // Don't throw error to avoid breaking login flow
+  }
+}
+
+/**
+ * Clean up old login attempts (older than 24 hours)
+ */
+export async function cleanupOldLoginAttempts(): Promise<void> {
+  try {
+    const cutoffDate = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
+    
+    await prisma.loginAttempt.deleteMany({
+      where: {
+        createdAt: {
+          lt: cutoffDate
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Cleanup old login attempts error:', error);
+  }
+}
+
+/**
+ * Get security statistics for monitoring
+ */
+export async function getSecurityStats(hours: number = 24) {
+  try {
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    
+    const [totalAttempts, failedAttempts, uniqueIPs, lockedAccounts] = await Promise.all([
+      prisma.loginAttempt.count({
+        where: { createdAt: { gte: since } }
+      }),
+      prisma.loginAttempt.count({
+        where: { 
+          createdAt: { gte: since },
+          success: false
+        }
+      }),
+      prisma.loginAttempt.groupBy({
+        by: ['ipAddress'],
+        where: { createdAt: { gte: since } },
+        _count: true
+      }),
+      prisma.user.count({
+        where: {
+          lockedUntil: {
+            gt: new Date()
+          }
+        }
+      })
+    ]);
+
+    return {
+      totalAttempts,
+      failedAttempts,
+      successRate: totalAttempts > 0 ? ((totalAttempts - failedAttempts) / totalAttempts * 100).toFixed(2) : '100',
+      uniqueIPs: uniqueIPs.length,
+      lockedAccounts,
+      period: `${hours} hours`
+    };
+  } catch (error) {
+    console.error('Get security stats error:', error);
+    return null;
+  }
+}
+
+/**
+ * Unlock user account manually (admin function)
+ */
+export async function unlockUserAccount(email: string): Promise<boolean> {
+  try {
+    await prisma.user.updateMany({
+      where: { email: email.toLowerCase() },
+      data: {
+        loginAttempts: 0,
+        lockedUntil: null
+      }
+    });
+    return true;
+  } catch (error) {
+    console.error('Unlock user account error:', error);
+    return false;
+  }
+}
+
+/**
+ * Check for suspicious activity patterns
+ */
+export async function detectSuspiciousActivity(ipAddress: string, hours: number = 1): Promise<{
+  suspicious: boolean;
+  reasons: string[];
+}> {
+  try {
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    
+    const attempts = await prisma.loginAttempt.findMany({
+      where: {
+        ipAddress,
+        createdAt: { gte: since }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const reasons: string[] = [];
+    let suspicious = false;
+
+    // Check for rapid-fire attempts
+    if (attempts.length > 20) {
+      suspicious = true;
+      reasons.push(`High volume: ${attempts.length} attempts in ${hours} hour(s)`);
+    }
+
+    // Check for multiple different emails from same IP
+    const uniqueEmails = new Set(attempts.map(a => a.email));
+    if (uniqueEmails.size > 10) {
+      suspicious = true;
+      reasons.push(`Multiple accounts targeted: ${uniqueEmails.size} different emails`);
+    }
+
+    // Check for consistent failures
+    const failedAttempts = attempts.filter(a => !a.success);
+    if (failedAttempts.length > 15) {
+      suspicious = true;
+      reasons.push(`High failure rate: ${failedAttempts.length} failed attempts`);
+    }
+
+    return { suspicious, reasons };
+  } catch (error) {
+    console.error('Detect suspicious activity error:', error);
+    return { suspicious: false, reasons: [] };
+  }
+}

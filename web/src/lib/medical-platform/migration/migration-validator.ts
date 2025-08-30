@@ -3,7 +3,7 @@
  * Comprehensive validation of migration results and data integrity
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma';
 import { enhancedUnitConverter } from '../core/enhanced-unit-converter';
 import { MEDICAL_PARAMETERS } from '../core/parameters';
 
