@@ -210,7 +210,7 @@ export class HealthIntelligenceEngine {
    */
   generateAlerts(): HealthAlert[] {
     const alerts: HealthAlert[] = [];
-    const alertId = () => `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const alertId = () => `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${Math.random().toString(36).substr(2, 5)}`;
 
     // Analyze each metric for alerts
     this.metrics.forEach(metric => {
@@ -581,7 +581,7 @@ export class HealthIntelligenceEngine {
 
     if (primaryScore >= 20) {
       return {
-        id: `meld_${Date.now()}`,
+        id: `meld_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: 'meld',
         severity: primaryScore >= 30 ? 'critical' : 'concerning',
         metric: 'MELD',
@@ -603,7 +603,7 @@ export class HealthIntelligenceEngine {
     correlations.forEach(corr => {
       if (Math.abs(corr.correlation) > 0.8 && corr.significance === 'concerning') {
         alerts.push({
-          id: `corr_${Date.now()}_${corr.metric1}_${corr.metric2}`,
+          id: `corr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${corr.metric1}_${corr.metric2}`,
           type: 'correlation',
           severity: 'warning',
           metric: 'multiple',

@@ -27,11 +27,16 @@ import {
 } from 'lucide-react';
 
 export function MedicalHeader() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const headerRef = useRef<HTMLElement>(null);
+
+  // Debug logging to see what's happening
+  useEffect(() => {
+    console.log('🔍 Header Debug:', { status, hasSession: !!session, userEmail: session?.user?.email });
+  }, [status, session]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -59,7 +64,7 @@ export function MedicalHeader() {
       icon: Upload,
       type: 'dropdown',
       items: [
-        { name: 'Upload Report', href: '/', icon: FileText },
+        { name: 'Upload Report', href: '/upload-enhanced', icon: FileText },
         { name: 'Manual Entry', href: '/manual-entry', icon: Upload },
       ]
     },
@@ -94,7 +99,7 @@ export function MedicalHeader() {
   // Flattened navigation for mobile menu
   const navigation = [
     { name: 'Liver Dashboard', href: '/dashboard', icon: BarChart3 },
-    { name: 'Upload Report', href: '/', icon: FileText },
+    { name: 'Upload Report', href: '/upload-enhanced', icon: FileText },
     { name: 'Manual Entry', href: '/manual-entry', icon: Upload },
     { name: 'Reports Library', href: '/reports', icon: FolderOpen },
     { name: 'AI Intelligence', href: '/ai-intelligence', icon: Activity },
@@ -213,7 +218,12 @@ export function MedicalHeader() {
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
 
-            {session ? (
+            {status === 'loading' ? (
+              <div className="flex items-center space-x-2 px-4 py-2 text-slate-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-400"></div>
+                <span className="text-sm">Loading...</span>
+              </div>
+            ) : status === 'authenticated' && session ? (
               <div className="flex items-center space-x-3">
                 <div className="relative">
                   <button
@@ -279,9 +289,9 @@ export function MedicalHeader() {
                       
                       <div className="border-t border-slate-100 mt-2 pt-2">
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             setOpenDropdown(null);
-                            signOut();
+                            await signOut({ callbackUrl: '/' });
                           }}
                           className="flex items-center space-x-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors w-full text-left"
                         >
@@ -344,7 +354,7 @@ export function MedicalHeader() {
                 );
               })}
               
-              {session && (
+              {status === 'authenticated' && session && (
                 <div className="mt-6 pt-6 border-t border-slate-200">
                   <div className="px-3 py-2">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Account</p>
@@ -362,6 +372,29 @@ export function MedicalHeader() {
                       <p className="text-xs text-slate-500">Patient Portal</p>
                     </div>
                   </div>
+                  <button
+                    onClick={async () => {
+                      setIsMobileMenuOpen(false);
+                      await signOut({ callbackUrl: '/' });
+                    }}
+                    className="flex items-center space-x-3 px-3 py-3 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors w-full text-left rounded-lg mx-3"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="font-medium">Sign Out</span>
+                  </button>
+                </div>
+              )}
+              
+              {status === 'unauthenticated' && (
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                  <Link
+                    href="/auth/signin"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center space-x-3 px-3 py-3 text-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors rounded-lg mx-3"
+                  >
+                    <User className="w-4 h-4" />
+                    <span className="font-medium">Sign In</span>
+                  </Link>
                 </div>
               )}
             </div>

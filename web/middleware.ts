@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { authSecurityMiddleware, securityHeadersMiddleware } from "./src/middleware/auth-security";
 import { mobileAuthMiddleware } from "./src/middleware/mobile-auth-middleware";
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
   // Apply mobile auth middleware first
   const mobileResponse = await mobileAuthMiddleware(request);
   if (mobileResponse.status !== 200) {
@@ -16,6 +19,41 @@ export async function middleware(request: NextRequest) {
   const authSecurityResponse = await authSecurityMiddleware(request);
   if (authSecurityResponse) {
     return authSecurityResponse;
+  }
+
+  // Protected routes that require authentication
+  const protectedRoutes = ['/dashboard', '/reports', '/profile', '/settings', '/ai-intelligence', '/scoring', '/imaging'];
+  const authRoutes = ['/auth/signin', '/auth/signup', '/auth/forgot-password', '/auth/reset-password'];
+
+  // Check if this is a protected route
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+  const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
+
+  if (isProtectedRoute) {
+    // Get the JWT token
+    const token = await getToken({ 
+      req: request, 
+      secret: process.env.NEXTAUTH_SECRET 
+    });
+
+    // Not authenticated - redirect to sign in
+    if (!token) {
+      const signInUrl = new URL('/auth/signin', request.url);
+      signInUrl.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+  }
+
+  // If user is authenticated and trying to access auth routes, redirect to dashboard
+  if (isAuthRoute) {
+    const token = await getToken({ 
+      req: request, 
+      secret: process.env.NEXTAUTH_SECRET 
+    });
+
+    if (token) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
   }
 
   // Merge mobile headers with security headers

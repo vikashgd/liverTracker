@@ -25,6 +25,74 @@ interface ReportsInterfaceProps {
   reports: Report[];
 }
 
+// Empty state component for when no reports exist
+function EmptyReportsState() {
+  return (
+    <div className="text-center py-16 px-4">
+      <div className="max-w-md mx-auto">
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full mb-6">
+          <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        
+        <h3 className="text-2xl font-bold text-gray-900 mb-4">No Reports Yet</h3>
+        <p className="text-gray-600 mb-8 leading-relaxed">
+          Upload your first lab report to start tracking your health metrics and unlock powerful insights about your wellness journey.
+        </p>
+
+        <div className="bg-blue-50 rounded-xl p-6 mb-8">
+          <h4 className="font-semibold text-blue-900 mb-3">What you can upload:</h4>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center text-blue-700">
+              <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+              Lab reports (PDF)
+            </div>
+            <div className="flex items-center text-blue-700">
+              <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+              Blood work panels
+            </div>
+            <div className="flex items-center text-blue-700">
+              <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+              Imaging reports
+            </div>
+            <div className="flex items-center text-blue-700">
+              <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+              Clinical notes
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <Link
+            href="/upload-enhanced"
+            className="inline-flex items-center justify-center w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Upload Your First Report
+          </Link>
+          
+          <Link
+            href="/manual-entry"
+            className="inline-flex items-center justify-center w-full border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors duration-200"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Enter Data Manually
+          </Link>
+        </div>
+
+        <div className="mt-8 text-xs text-gray-500">
+          💡 Tip: For best results, upload clear, high-quality images or PDFs
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ReportsInterface({ reports }: ReportsInterfaceProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('');
@@ -215,6 +283,11 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
   }, [visits, currentPage]);
 
   const totalPages = Math.ceil(visits.length / VISITS_PER_PAGE);
+
+  // Show empty state if no reports (after all hooks are declared)
+  if (reports.length === 0) {
+    return <EmptyReportsState />;
+  }
 
   const formatDateRange = (startDate: Date, endDate: Date) => {
     const start = new Date(startDate);
@@ -471,22 +544,49 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
         {paginatedVisits.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 shadow-lg border border-gray-100 text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <span className="text-4xl">🏥</span>
+              <span className="text-4xl">{searchTerm || selectedType || selectedPeriod ? '🔍' : '🏥'}</span>
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-3">
-              No medical visits found
+              {searchTerm || selectedType || selectedPeriod ? 'No matching reports found' : 'No medical visits found'}
             </h3>
             <p className="text-gray-600 mb-8 max-w-md mx-auto">
               {searchTerm || selectedType || selectedPeriod 
-                ? "Try adjusting your search criteria or filters to find what you're looking for"
-                : "Upload your first medical report to begin tracking your healthcare journey"
+                ? "Try adjusting your search criteria or filters to find what you're looking for. You can also clear all filters to see all reports."
+                : "Upload your first medical report to begin tracking your healthcare journey and unlock powerful health insights."
               }
             </p>
-            {!searchTerm && !selectedType && !selectedPeriod && (
-              <Link href="/" className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                <span className="mr-2">📄</span>
-                Upload Your First Report
-              </Link>
+            
+            {searchTerm || selectedType || selectedPeriod ? (
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedType('');
+                    setSelectedPeriod('');
+                  }}
+                  className="inline-flex items-center px-6 py-3 bg-gray-600 text-white font-medium rounded-xl hover:bg-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Clear All Filters
+                </button>
+                <div className="text-sm text-gray-500">
+                  or <Link href="/upload-enhanced" className="text-blue-600 hover:text-blue-700 font-medium">upload a new report</Link>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <Link href="/upload-enhanced" className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Upload Your First Report
+                </Link>
+                <div className="text-sm text-gray-500">
+                  or <Link href="/manual-entry" className="text-blue-600 hover:text-blue-700 font-medium">enter data manually</Link>
+                </div>
+              </div>
             )}
           </div>
         ) : (
@@ -578,7 +678,7 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                               className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
                             >
                               <span className="mr-1">👁️</span>
-                              View Details
+                              View & Preview
                             </Link>
                             <button 
                               onClick={async () => {
@@ -649,7 +749,7 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                               className="inline-flex items-center px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
                             >
                               <span className="mr-1">👁️</span>
-                              View
+                              Preview
                             </Link>
                             <button 
                               onClick={async () => {

@@ -64,7 +64,18 @@ export const authOptions: NextAuthOptions = {
       issuer: "https://accounts.google.com",
       jwks_endpoint: "https://www.googleapis.com/oauth2/v3/certs",
       httpOptions: {
-        timeout: 15000, // 15 seconds timeout
+        timeout: 30000, // Increased to 30 seconds timeout
+      },
+      // Add additional configuration for better reliability
+      wellKnown: "https://accounts.google.com/.well-known/openid-configuration",
+      checks: ["pkce", "state"],
+      profile(profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+        };
       },
     })
   ],
@@ -108,68 +119,60 @@ export const authOptions: NextAuthOptions = {
     }
   },
   callbacks: {
-    async signIn({ user, account }) {
-      // Handle Google OAuth account linking
+    async signIn({ user, account, profile }) {
+      console.log('🔐 SignIn callback:', { 
+        provider: account?.provider, 
+        email: user?.email 
+      });
+
+      // Simplified OAuth handling - just allow sign-in
       if (account?.provider === "google") {
         try {
-          const existingUser = await prisma.user.findUnique({
-            where: { email: user.email! }
-          });
-
-          if (existingUser) {
-            // Link Google account to existing user
-            const existingAccount = await prisma.account.findUnique({
-              where: {
-                provider_providerAccountId: {
-                  provider: "google",
-                  providerAccountId: account.providerAccountId
-                }
-              }
-            });
-
-            if (!existingAccount) {
-              await prisma.account.create({
-                data: {
-                  userId: existingUser.id,
-                  type: account.type,
-                  provider: account.provider,
-                  providerAccountId: account.providerAccountId,
-                  access_token: account.access_token,
-                  expires_at: account.expires_at,
-                  token_type: account.token_type,
-                  scope: account.scope,
-                  id_token: account.id_token,
-                }
-              });
-            }
-
-            // User found and account linked successfully
-            console.log('Google account linked to existing user:', existingUser.email);
-          }
-
-          // Log successful Google login (simplified for production DB)
-          console.log('Successful Google OAuth login for:', user.email!.toLowerCase());
-
+          console.log('✅ Google OAuth sign-in for:', user.email);
           return true;
         } catch (error) {
-          console.error('Google OAuth error:', error);
-          return false;
+          console.error('❌ Google OAuth error:', error);
+          // Still allow sign-in to avoid blocking users
+          return true;
         }
       }
 
+      // Allow all other sign-ins
       return true;
     },
     async session({ session, token }) {
+      // Add user ID to session from JWT token
       if (session?.user && token?.sub) {
         (session.user as any).id = token.sub;
       }
+      
+      // Add additional user data from token
+      if (token?.uid) {
+        (session.user as any).id = token.uid;
+      }
+      
       return session;
     },
-    async jwt({ user, token }) {
+    async jwt({ user, token, account }) {
+      // Store user ID in token on first sign in
       if (user) {
         token.uid = user.id;
+        token.sub = user.id; // Ensure sub is set
       }
+      
+      // Persist account info
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      
       return token;
+    },
+    async redirect({ url, baseUrl }) {
+      // Redirect to dashboard after sign in
+      if (url.startsWith("/") || url.startsWith(baseUrl)) {
+        return `${baseUrl}/dashboard`;
+      }
+      return `${baseUrl}/dashboard`;
     },
   },
 };

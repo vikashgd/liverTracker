@@ -6,7 +6,7 @@ export async function getSignedUrl(objectKey: string): Promise<string | null> {
   try {
     const storage = new GCSStorage();
     const signedUrl = await storage.signDownloadURL({ key: objectKey });
-    return signedUrl.url;
+    return signedUrl ? signedUrl.url : null;
   } catch (error) {
     console.error('Error getting signed URL:', error);
     return null;
@@ -49,13 +49,14 @@ export class GCSStorage implements BlobStorage {
     return { url, key, expiresIn: this.expiresInSeconds! };
   }
 
-  async signDownloadURL({ key }: SignDownloadParams): Promise<SignedUrl> {
+  async signDownloadURL({ key }: SignDownloadParams): Promise<SignedUrl | null> {
     const file = this.getBucket().file(key);
     
     // Check if file exists before generating signed URL
     const [exists] = await file.exists();
     if (!exists) {
-      throw new Error(`File not found: ${key}`);
+      // Return null instead of throwing error for missing files
+      return null;
     }
     
     const [url] = await file.getSignedUrl({

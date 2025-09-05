@@ -11,6 +11,7 @@ import { NextButton } from "./next-button";
 import { ErrorBoundary } from "./error-boundary";
 import { ErrorRecoverySystem, useErrorRecovery } from "./error-recovery-system";
 import { useNetworkStatus } from "@/hooks/use-network-status";
+import { ClientOnly } from "@/lib/hydration-safe";
 import { 
   useAccessibilityAnnouncer, 
   useKeyboardNavigation, 
@@ -388,28 +389,30 @@ export function UploadFlowTabs({
         </div>
       )}
 
-      {/* Network Status Warning */}
-      {!isOnline && (
-        <div className="network-warning mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-orange-700">
-              You're currently offline. Some features may not work properly.
-            </span>
+      {/* Network Status Warning - Client Only to prevent hydration issues */}
+      <ClientOnly>
+        {!isOnline && (
+          <div className="network-warning mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-orange-700">
+                You're currently offline. Some features may not work properly.
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {isSlowConnection && (
-        <div className="connection-warning mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-            <span className="text-sm text-yellow-700">
-              Slow connection detected. Uploads may take longer than usual.
-            </span>
+        {isSlowConnection && (
+          <div className="connection-warning mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+              <span className="text-sm text-yellow-700">
+                Slow connection detected. Uploads may take longer than usual.
+              </span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </ClientOnly>
 
       {/* Accessibility Announcer */}
       <AnnouncerComponent />

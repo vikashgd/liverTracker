@@ -198,6 +198,9 @@ export function EnhancedMedicalUploader() {
 
         const { key: uploadedKey } = await uploadRes.json();
 
+        // Store the actual uploaded key for later use
+        updateFlowState({ objectKey: uploadedKey });
+
         if (file.type === "application/pdf") {
           const imageUrls = await convertPdfToImages(file);
           extractionResult = await extractFromImages(imageUrls);
@@ -207,27 +210,54 @@ export function EnhancedMedicalUploader() {
         }
       } else {
         // Multiple files processing
+        console.log(`🔄 Processing ${files.length} files for batch upload...`);
         const imageUrls: string[] = [];
+        const uploadedKeys: string[] = [];
+        
+        // Generate shared timestamp for all files in this batch
+        const batchTimestamp = Date.now();
+        const batchRandom = Math.floor(Math.random() * 1000);
         
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-          const key = generateBatchKey(i, file.name);
+          // Use shared timestamp for all files in batch
+          const key = `reports/${batchTimestamp}-batch-${i}-${batchRandom}-${file.name}`;
           
-          const uploadRes = await fetch(`/api/storage/upload?key=${encodeURIComponent(key)}`, {
-            method: "POST",
-            body: file,
-          });
+          console.log(`📤 Uploading file ${i + 1}/${files.length}: ${file.name} (${file.size} bytes)`);
+          console.log(`🔑 Generated key: ${key}`);
           
-          if (!uploadRes.ok) {
-            const errorText = await uploadRes.text();
-            throw new Error(`Failed to upload file ${i + 1}: ${errorText || 'Unknown error'}`);
-          }
+          try {
+            const uploadRes = await fetch(`/api/storage/upload?key=${encodeURIComponent(key)}`, {
+              method: "POST",
+              body: file,
+            });
+            
+            if (!uploadRes.ok) {
+              const errorText = await uploadRes.text();
+              console.error(`❌ Upload failed for file ${i + 1}:`, errorText);
+              throw new Error(`Failed to upload file ${i + 1} (${file.name}): ${errorText || 'Unknown error'}`);
+            }
 
-          const { key: uploadedKey } = await uploadRes.json();
-          const downloadRes = await signDownload(uploadedKey);
-          imageUrls.push(downloadRes.url);
+            const { key: uploadedKey } = await uploadRes.json();
+            console.log(`✅ File ${i + 1} uploaded successfully: ${uploadedKey}`);
+            uploadedKeys.push(uploadedKey);
+            
+            const downloadRes = await signDownload(uploadedKey);
+            imageUrls.push(downloadRes.url);
+          } catch (error) {
+            console.error(`❌ Error uploading file ${i + 1}:`, error);
+            throw error;
+          }
         }
 
+        console.log(`✅ All ${uploadedKeys.length} files uploaded successfully`);
+        console.log(`📋 Uploaded keys:`, uploadedKeys);
+
+        // Store all uploaded keys and the primary key for database
+        updateFlowState({ 
+          objectKey: uploadedKeys[0], // Primary key for database
+          allUploadedKeys: uploadedKeys // All keys for multi-file display
+        });
         extractionResult = await extractFromImages(imageUrls);
       }
 
@@ -281,7 +311,8 @@ export function EnhancedMedicalUploader() {
         throw new Error('Invalid extracted data. Please process files again.');
       }
 
-      const key = generateReportKey(flowState.uploadedFiles, flowState.uploadedFiles.length > 1);
+      // Use the stored objectKey from the upload process
+      const key = flowState.objectKey || generateReportKey(flowState.uploadedFiles, flowState.uploadedFiles.length > 1);
       
       const res = await fetch("/api/reports", {
         method: "POST",

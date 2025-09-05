@@ -17,7 +17,10 @@ const createPrismaClient = () => {
   });
 };
 
-export const prisma: PrismaClient = global.prisma ?? createPrismaClient();
+export const prisma: PrismaClient = 
+  typeof window === 'undefined' 
+    ? (global.prisma ?? createPrismaClient())
+    : {} as PrismaClient; // Fallback for client-side
 
 // Don't connect immediately - let it connect on first use
 // This prevents startup errors when the database is paused
@@ -29,6 +32,8 @@ if (typeof process !== 'undefined' && process.on) {
   });
 }
 
-if (process.env.NODE_ENV !== "production") global.prisma = prisma;
+if (typeof window === 'undefined' && process.env.NODE_ENV !== "production") {
+  global.prisma = prisma;
+}
 
 

@@ -28,11 +28,5 @@ export default async function ScoringPage() {
     console.error('Failed to load latest values for scoring:', error);
   }
 
-  return (
-    <div className="min-h-screen bg-medical-neutral-50">
-      <div className="medical-layout-container py-8">
-        <ComprehensiveMedicalScoring initialValues={initialValues} />
-      </div>
-    </div>
-  );
+  return <ComprehensiveMedicalScoring initialValues={initialValues} />;
 }

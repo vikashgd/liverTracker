@@ -144,7 +144,7 @@ export function UploadPreviewTab({
                         alt={`Preview ${index + 1}`}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          console.error('Image load error:', e);
+                          // Silently handle image load errors during preview
                           (e.target as HTMLImageElement).style.display = 'none';
                         }}
                       />

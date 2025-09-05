@@ -57,10 +57,8 @@ export function ComprehensiveMedicalScoring({ initialValues }: ComprehensiveMedi
       const response = await fetch('/api/profile');
       if (response.ok) {
         const data = await response.json();
-        console.log('Profile data loaded:', data);
         if (data.profile) {
           setProfileData(data.profile);
-          console.log('Profile data set:', data.profile);
         }
       }
     } catch (error) {
@@ -110,14 +108,6 @@ export function ComprehensiveMedicalScoring({ initialValues }: ComprehensiveMedi
       }
     }
 
-    // Profile-based recommendations
-    if (profileData?.transplantCandidate) {
-      recommendations.push('Currently listed for liver transplantation');
-    }
-    if (profileData?.onDialysis) {
-      recommendations.push('Dialysis status affects MELD calculation');
-    }
-
     return {
       riskLevel,
       riskColor,
@@ -140,285 +130,192 @@ export function ComprehensiveMedicalScoring({ initialValues }: ComprehensiveMedi
   const overallRisk = getOverallRiskAssessment();
 
   return (
-    <div className="space-y-8">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-br from-medical-primary-600 to-purple-600 text-white rounded-2xl p-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-              <Calculator className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold mb-2">Medical Scoring Dashboard</h1>
-              <p className="text-blue-100 text-lg">
-                Comprehensive liver disease assessment with MELD and Child-Pugh scoring
-              </p>
-            </div>
-          </div>
-          
-          {overallRisk && (
-            <div className="text-right">
-              <div className="text-2xl font-bold text-white mb-1">
-                {overallRisk.riskLevel}
+    <div className="min-h-screen bg-gray-50">
+      {/* Clean Header - Dashboard Style */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Calculator className="w-6 h-6 text-blue-600" />
               </div>
-              <div className="text-blue-100 text-sm">Overall Risk</div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Medical Scoring</h1>
+                <p className="text-gray-600 mt-1">
+                  MELD and Child-Pugh liver disease assessment
+                </p>
+              </div>
+            </div>
+            
+            {overallRisk && (
+              <div className="text-right">
+                <div className="text-sm text-gray-500 mb-1">Overall Risk</div>
+                <div className={`text-xl font-semibold ${overallRisk.riskColor}`}>
+                  {overallRisk.riskLevel}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Profile Status - Inline with Header */}
+          {!profileLoading && (
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <User className="w-5 h-5 text-gray-600" />
+                  <span className="font-medium text-gray-900">Profile Integration</span>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    getProfileCompleteness() >= 100 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {getProfileCompleteness()}% Complete
+                  </span>
+                </div>
+                
+                {!profileData && (
+                  <Link 
+                    href="/profile" 
+                    className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+                  >
+                    Create Profile →
+                  </Link>
+                )}
+              </div>
+              
+              {profileData && (
+                <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Gender:</span>
+                    <span className="ml-2 font-medium">
+                      {profileData.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1) : 'Not set'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Dialysis:</span>
+                    <span className="ml-2 font-medium">
+                      {profileData.onDialysis ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Disease:</span>
+                    <span className="ml-2 font-medium">
+                      {profileData.liverDiseaseType ? profileData.liverDiseaseType.replace('_', ' ') : 'Not set'}
+                    </span>
+                  </div>
+                  {getProfileCompleteness() < 100 && (
+                    <div>
+                      <Link href="/profile" className="text-blue-600 hover:text-blue-700 text-sm">
+                        Complete Profile →
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Profile Integration Status */}
-      {!profileLoading && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <Card className="border-medical-primary-200 bg-gradient-to-br from-medical-primary-50 to-blue-50">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-medical-primary-100 rounded-lg flex items-center justify-center">
-                    <User className="w-4 h-4 text-medical-primary-600" />
-                  </div>
-                  <span>Profile Integration</span>
-                </div>
-                
-                <Badge 
-                  variant="outline" 
-                  className={getProfileCompleteness() >= 100 ? 'border-green-200 text-green-700' : 'border-yellow-200 text-yellow-700'}
-                >
-                  {getProfileCompleteness()}% Complete
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {profileData ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-medical-primary-800">Current Profile Data</h4>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-medical-neutral-600">Gender:</span>
-                        <span className="font-medium text-medical-neutral-800">
-                          {profileData.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1) : 'Not set'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-medical-neutral-600">Dialysis Status:</span>
-                        <span className="font-medium text-medical-neutral-800">
-                          {profileData.onDialysis ? `Yes (${profileData.dialysisSessionsPerWeek || 0}/week)` : 'No'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-medical-neutral-600">Liver Disease:</span>
-                        <span className="font-medium text-medical-neutral-800">
-                          {profileData.liverDiseaseType ? profileData.liverDiseaseType.replace('_', ' ').toUpperCase() : 'Not specified'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-medical-neutral-600">Transplant Candidate:</span>
-                        <span className="font-medium text-medical-neutral-800">
-                          {profileData.transplantCandidate ? 'Yes' : 'No'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-medical-primary-800">Enhanced Accuracy</h4>
-                    <div className="space-y-1 text-sm text-medical-primary-700">
-                      {profileData.gender && (
-                        <div className="flex items-center space-x-2">
-                          <span className="text-green-600">✓</span>
-                          <span>MELD 3.0 gender adjustment enabled</span>
-                        </div>
-                      )}
-                      {profileData.onDialysis && (
-                        <div className="flex items-center space-x-2">
-                          <span className="text-green-600">✓</span>
-                          <span>Dialysis adjustment will be applied</span>
-                        </div>
-                      )}
-                      {profileData.liverDiseaseType && (
-                        <div className="flex items-center space-x-2">
-                          <span className="text-green-600">✓</span>
-                          <span>Disease-specific context available</span>
-                        </div>
-                      )}
-                      {getProfileCompleteness() < 100 && (
-                        <div className="flex items-center space-x-2">
-                          <span className="text-yellow-600">⚠</span>
-                          <Link href="/profile" className="text-yellow-700 underline hover:text-yellow-800">
-                            Complete profile for maximum accuracy
-                          </Link>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-medical-neutral-600 mb-3">No profile data found</p>
-                  <Link 
-                    href="/profile" 
-                    className="inline-flex items-center space-x-2 text-medical-primary-600 hover:text-medical-primary-700 font-medium"
-                  >
-                    <User className="w-4 h-4" />
-                    <span>Create Profile</span>
-                  </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Overall Risk Assessment */}
-      {overallRisk && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-purple-600" />
-                </div>
-                <span>Overall Risk Assessment</span>
-                <Badge className={`${overallRisk.riskColor} bg-white border`}>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Risk Assessment - Only show if we have results */}
+        {overallRisk && (
+          <div className="mb-8 p-4 bg-white rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <TrendingUp className="w-5 h-5 text-gray-600" />
+                <span className="font-medium text-gray-900">Risk Assessment</span>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${overallRisk.riskColor} bg-gray-100`}>
                   {overallRisk.riskLevel} Risk
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-purple-800 mb-2">Current Scores</h4>
-                  <div className="space-y-2 text-sm">
-                    {meldResult && (
-                      <div className="flex justify-between">
-                        <span>MELD Score:</span>
-                        <span className="font-bold">
-                          {meldResult.meld3 || meldResult.meldNa || meldResult.meld}
-                          {meldResult.meld3 ? ' (MELD 3.0)' : meldResult.meldNa ? ' (MELD-Na)' : ''}
-                        </span>
-                      </div>
-                    )}
-                    {childPughResult && (
-                      <div className="flex justify-between">
-                        <span>Child-Pugh:</span>
-                        <span className="font-bold">
-                          Class {childPughResult.class} ({childPughResult.score} points)
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-purple-800 mb-2">Clinical Recommendations</h4>
-                  <div className="space-y-1 text-sm text-purple-700">
-                    {overallRisk.recommendations.map((rec, index) => (
-                      <div key={index} className="flex items-start space-x-2">
-                        <span className="text-purple-600 mt-0.5">•</span>
-                        <span>{rec}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                </span>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Scoring Calculators */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="meld" className="flex items-center space-x-2">
-              <Calculator className="w-4 h-4" />
-              <span>MELD Score</span>
-            </TabsTrigger>
-            <TabsTrigger value="child-pugh" className="flex items-center space-x-2">
-              <Heart className="w-4 h-4" />
-              <span>Child-Pugh Score</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="meld" className="space-y-6">
-            <EnhancedMELDDashboard 
-              initialValues={initialValues}
-            />
-          </TabsContent>
-
-          <TabsContent value="child-pugh" className="space-y-6">
-            <EnhancedChildPughDashboard 
-              initialValues={{
-                bilirubin: initialValues?.bilirubin,
-                albumin: initialValues?.albumin,
-                inr: initialValues?.inr
-              }}
-              profileData={{
-                ascites: (profileData as any)?.ascites,
-                encephalopathy: (profileData as any)?.encephalopathy
-              }}
-            />
-          </TabsContent>
-        </Tabs>
-      </motion.div>
-
-      {/* Medical Context */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Activity className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-blue-900 mb-2">
-                  Understanding Your Scores
-                </h3>
-                <div className="space-y-2 text-sm text-blue-800">
-                  <p>• <strong>MELD Score:</strong> Predicts 3-month mortality risk and determines transplant priority</p>
-                  <p>• <strong>Child-Pugh Score:</strong> Assesses liver disease severity and prognosis</p>
-                  <p>• <strong>Profile Integration:</strong> Your clinical data enables the most accurate calculations</p>
-                  <p>• <strong>Combined Assessment:</strong> Both scores provide complementary insights into liver health</p>
-                </div>
+              
+              <div className="text-sm text-gray-600">
+                {meldResult && `MELD: ${meldResult.meld3 || meldResult.meldNa || meldResult.meld}`}
+                {meldResult && childPughResult && ' • '}
+                {childPughResult && `Child-Pugh: Class ${childPughResult.class}`}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+            
+            {overallRisk.recommendations.length > 0 && (
+              <div className="mt-3 text-sm text-gray-700">
+                {overallRisk.recommendations.map((rec, index) => (
+                  <div key={index} className="flex items-start space-x-2">
+                    <span className="text-gray-400 mt-0.5">•</span>
+                    <span>{rec}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-      {/* Medical Disclaimer */}
-      <Card className="border-medical-warning-200 bg-medical-warning-50">
-        <CardContent className="pt-6">
-          <div className="flex items-start space-x-3">
-            <AlertTriangle className="w-5 h-5 text-medical-warning-600 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-medical-warning-800">
-              <p className="font-medium mb-1">Medical Disclaimer</p>
-              <p>
-                These medical scoring tools are for educational and informational purposes only. 
-                All scores should be interpreted by qualified healthcare professionals in the context of 
-                complete clinical assessment. Do not use these tools for making medical decisions without 
-                consulting your healthcare provider.
-              </p>
+        {/* Scoring Calculators - Clean Tabs */}
+        <div className="bg-white rounded-lg border border-gray-200">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <div className="border-b border-gray-200">
+              <TabsList className="w-full bg-transparent border-none rounded-none h-auto p-0">
+                <TabsTrigger 
+                  value="meld" 
+                  className="flex-1 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none border-b-2 border-transparent py-4 px-6"
+                >
+                  <Calculator className="w-4 h-4 mr-2" />
+                  MELD Score
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="child-pugh" 
+                  className="flex-1 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 rounded-none border-b-2 border-transparent py-4 px-6"
+                >
+                  <Heart className="w-4 h-4 mr-2" />
+                  Child-Pugh Score
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="meld" className="p-6 mt-0">
+              <EnhancedMELDDashboard initialValues={initialValues} />
+            </TabsContent>
+
+            <TabsContent value="child-pugh" className="p-6 mt-0">
+              <EnhancedChildPughDashboard 
+                initialValues={{
+                  bilirubin: initialValues?.bilirubin,
+                  albumin: initialValues?.albumin,
+                  inr: initialValues?.inr
+                }}
+                profileData={{
+                  ascites: (profileData as any)?.ascites,
+                  encephalopathy: (profileData as any)?.encephalopathy
+                }}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* Footer Information - Minimal */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <Activity className="w-4 h-4 text-blue-600" />
+              <span className="font-medium text-blue-900">About These Scores</span>
+            </div>
+            <div className="text-sm text-blue-800 space-y-1">
+              <p><strong>MELD:</strong> Predicts 3-month mortality risk</p>
+              <p><strong>Child-Pugh:</strong> Assesses liver disease severity</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          
+          <div className="p-4 bg-yellow-50 rounded-lg">
+            <div className="flex items-center space-x-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-600" />
+              <span className="font-medium text-yellow-900">Medical Disclaimer</span>
+            </div>
+            <p className="text-sm text-yellow-800">
+              For educational purposes only. Consult healthcare professionals for medical decisions.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

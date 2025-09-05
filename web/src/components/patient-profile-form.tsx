@@ -13,6 +13,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface PatientProfile {
   id?: string;
+  name?: string;
+  location?: string;
   dateOfBirth?: string;
   gender?: 'male' | 'female' | 'other';
   height?: number;
@@ -170,9 +172,9 @@ export function PatientProfileForm() {
 
   const getCompletionPercentage = () => {
     const fields = [
-      profile.dateOfBirth, profile.gender, profile.height, profile.weight,
-      profile.liverDiseaseType, profile.diagnosisDate, profile.primaryPhysician,
-      profile.emergencyContactName, profile.emergencyContactPhone
+      profile.name, profile.location, profile.dateOfBirth, profile.gender, 
+      profile.height, profile.weight, profile.liverDiseaseType, profile.diagnosisDate, 
+      profile.primaryPhysician, profile.emergencyContactName, profile.emergencyContactPhone
     ];
     const completed = fields.filter(field => {
       return field !== undefined && field !== null && field !== '';
@@ -226,26 +228,12 @@ export function PatientProfileForm() {
         </div>
       </motion.div>
 
-      {/* Debug Information - Remove in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-100 border border-gray-300 rounded-lg p-4 text-xs"
-        >
-          <h4 className="font-bold text-gray-800 mb-2">🔍 Debug Info (Development Only)</h4>
-          <div className="space-y-1 text-gray-700">
-            <p><strong>Profile loaded:</strong> {JSON.stringify(profile, null, 2)}</p>
-            <p><strong>Has changes:</strong> {hasChanges ? 'Yes' : 'No'}</p>
-            <p><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</p>
-            <p><strong>Saving:</strong> {saving ? 'Yes' : 'No'}</p>
-          </div>
-        </motion.div>
-      )}
+
 
       <AnimatePresence>
         {saving && (
           <motion.div
+            key="saving"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -258,6 +246,7 @@ export function PatientProfileForm() {
         
         {lastSaved && !saving && (
           <motion.div
+            key="saved"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -272,6 +261,7 @@ export function PatientProfileForm() {
 
         {error && (
           <motion.div
+            key="error"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -297,60 +287,93 @@ export function PatientProfileForm() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
+              {/* Personal Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="dateOfBirth" className="text-gray-700 font-medium">Date of Birth</Label>
+                  <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
                   <Input
-                    id="dateOfBirth"
-                    type="date"
-                    value={profile.dateOfBirth || ''}
-                    onChange={(e) => updateProfile({ dateOfBirth: e.target.value })}
+                    id="name"
+                    type="text"
+                    value={profile.name || ''}
+                    onChange={(e) => updateProfile({ name: e.target.value })}
                     className="mt-1"
+                    placeholder="John Doe"
                   />
-                  {calculateAge() && (
-                    <p className="text-sm text-gray-600 mt-1">Age: {calculateAge()} years</p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-1">Optional - helps personalize your experience</p>
                 </div>
 
                 <div>
-                  <Label htmlFor="gender" className="text-gray-700 font-medium">Gender</Label>
-                  <Select value={profile.gender || ''} onValueChange={(value) => updateProfile({ gender: value as any })}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="height" className="text-gray-700 font-medium">Height (cm)</Label>
+                  <Label htmlFor="location" className="text-gray-700 font-medium">Location</Label>
                   <Input
-                    id="height"
-                    type="number"
-                    value={profile.height || ''}
-                    onChange={(e) => updateProfile({ height: parseFloat(e.target.value) || undefined })}
+                    id="location"
+                    type="text"
+                    value={profile.location || ''}
+                    onChange={(e) => updateProfile({ location: e.target.value })}
                     className="mt-1"
-                    placeholder="170"
+                    placeholder="City, State or Country"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Optional - for timezone and regional settings</p>
                 </div>
+              </div>
 
-                <div>
-                  <Label htmlFor="weight" className="text-gray-700 font-medium">Weight (kg)</Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    value={profile.weight || ''}
-                    onChange={(e) => updateProfile({ weight: parseFloat(e.target.value) || undefined })}
-                    className="mt-1"
-                    placeholder="70"
-                  />
-                  {calculateBMI() && (
-                    <p className="text-sm text-gray-600 mt-1">BMI: {calculateBMI()}</p>
-                  )}
+              {/* Demographics & Vitals */}
+              <div className="border-t pt-6">
+                <h4 className="font-medium text-gray-800 mb-4">Demographics & Vitals</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="dateOfBirth" className="text-gray-700 font-medium">Date of Birth</Label>
+                    <Input
+                      id="dateOfBirth"
+                      type="date"
+                      value={profile.dateOfBirth || ''}
+                      onChange={(e) => updateProfile({ dateOfBirth: e.target.value })}
+                      className="mt-1"
+                    />
+                    {calculateAge() && (
+                      <p className="text-sm text-gray-600 mt-1">Age: {calculateAge()} years</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="gender" className="text-gray-700 font-medium">Gender</Label>
+                    <Select value={profile.gender || ''} onValueChange={(value) => updateProfile({ gender: value as any })}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="height" className="text-gray-700 font-medium">Height (cm)</Label>
+                    <Input
+                      id="height"
+                      type="number"
+                      value={profile.height || ''}
+                      onChange={(e) => updateProfile({ height: parseFloat(e.target.value) || undefined })}
+                      className="mt-1"
+                      placeholder="170"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="weight" className="text-gray-700 font-medium">Weight (kg)</Label>
+                    <Input
+                      id="weight"
+                      type="number"
+                      value={profile.weight || ''}
+                      onChange={(e) => updateProfile({ weight: parseFloat(e.target.value) || undefined })}
+                      className="mt-1"
+                      placeholder="70"
+                    />
+                    {calculateBMI() && (
+                      <p className="text-sm text-gray-600 mt-1">BMI: {calculateBMI()}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>

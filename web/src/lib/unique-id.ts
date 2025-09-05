@@ -37,6 +37,14 @@ export function generateTempPageKey(pageNum: number): string {
 }
 
 /**
+ * Gets file extension from filename
+ */
+function getFileExtension(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  return ext ? `.${ext}` : '.jpg'; // Default to .jpg if no extension
+}
+
+/**
  * Generates a report key based on uploaded files
  */
 export function generateReportKey(uploadedFiles: Array<{ name?: string }>, isBatch: boolean = false): string {
@@ -44,9 +52,12 @@ export function generateReportKey(uploadedFiles: Array<{ name?: string }>, isBat
   const random = Math.floor(Math.random() * 1000);
   
   if (isBatch || uploadedFiles.length > 1) {
-    return `reports/${timestamp}-${random}-batch-report`;
+    // ✅ FIXED: Always include file extension for batch uploads
+    const firstFile = uploadedFiles[0];
+    const extension = firstFile?.name ? getFileExtension(firstFile.name) : '.jpg';
+    return `reports/${timestamp}-${random}-batch-report${extension}`;
   } else {
-    const filename = uploadedFiles[0]?.name ?? "report";
+    const filename = uploadedFiles[0]?.name ?? "report.pdf";
     return `reports/${timestamp}-${random}-${filename}`;
   }
 }

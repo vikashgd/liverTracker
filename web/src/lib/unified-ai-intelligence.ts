@@ -137,7 +137,7 @@ export class UnifiedAIEngine {
     // Convert health intelligence insights
     healthInsights.forEach(insight => {
       unifiedInsights.push({
-        id: `health_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `health_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${Math.random().toString(36).substr(2, 5)}`,
         title: insight.title,
         description: insight.summary,
         explanation: insight.details,

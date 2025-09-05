@@ -3,10 +3,12 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "../styles/medical-design.css";
 import { Providers } from "@/components/providers";
-import { MedicalHeader } from "@/components/medical-header";
+import { EnhancedMedicalHeader } from "@/components/enhanced-medical-header";
 import { MobileDebugInfo } from "@/components/mobile-debug";
 import { PWAServiceWorker } from "@/components/pwa-service-worker";
 import { OfflineIndicator } from "@/components/offline-indicator";
+import { PerformanceMonitor } from "@/components/performance-monitor";
+import "@/lib/warmup"; // Auto-warmup database
 
 const inter = Inter({
   variable: "--font-inter",
@@ -78,7 +80,7 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased min-h-screen bg-medical-neutral-50`} suppressHydrationWarning>
         <Providers>
           <div className="min-h-screen flex flex-col">
-            <MedicalHeader />
+            <EnhancedMedicalHeader />
             <main className="flex-1">
               {children}
             </main>
@@ -105,6 +107,7 @@ export default function RootLayout({
           <PWAServiceWorker />
           <OfflineIndicator />
           <MobileDebugInfo />
+          <PerformanceMonitor />
         </Providers>
       </body>
     </html>

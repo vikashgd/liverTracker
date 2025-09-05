@@ -4,6 +4,7 @@ import { safeQuery } from "@/lib/db-utils";
 import { getCurrentUserId } from "@/lib/auth";
 import { getMedicalPlatform } from "@/lib/medical-platform";
 import { enhancedUnitConverter } from "@/lib/medical-platform/core/enhanced-unit-converter";
+import { markFirstReportUploaded, markSecondReportUploaded, getUserOnboardingStatus } from "@/lib/onboarding-utils";
 import { z } from "zod";
 
 const Body = z.object({
@@ -142,6 +143,9 @@ export async function POST(req: NextRequest) {
           console.warn('⚠️ Timeline event creation failed, but report was saved successfully');
         }
 
+        // Update onboarding progress
+        await updateOnboardingForNewReport(userId);
+
         return NextResponse.json({ 
           id: processingResult.report.id,
           processed: true,
@@ -217,6 +221,9 @@ export async function POST(req: NextRequest) {
             extractedJson: data.extracted ?? undefined,
           },
         });
+
+        // Update onboarding progress
+        await updateOnboardingForNewReport(userId);
 
         return NextResponse.json({
           id: minimalReport.id,
@@ -332,6 +339,9 @@ async function processLegacyReport(data: any, userId: string, safeDate: Date) {
     },
   });
 
+  // Update onboarding progress
+  await updateOnboardingForNewReport(userId);
+
   return NextResponse.json({ 
     id: report.id, 
     processed: true,
@@ -403,6 +413,38 @@ function applyLegacyUnitConversion(metricName: string, value: number | null, uni
 
   // No conversion needed - return as is
   return { value, unit };
+}
+
+/**
+ * Update onboarding progress when a new report is uploaded
+ */
+async function updateOnboardingForNewReport(userId: string) {
+  try {
+    const status = await getUserOnboardingStatus(userId);
+    if (!status) return;
+
+    // Get current report count
+    const reportCount = await prisma.reportFile.count({
+      where: { userId }
+    });
+
+    console.log(`📊 User ${userId} now has ${reportCount} reports`);
+
+    // Mark first report uploaded
+    if (reportCount === 1 && !status.firstReportUploaded) {
+      await markFirstReportUploaded(userId);
+      console.log('✅ Marked first report uploaded for onboarding');
+    }
+
+    // Mark second report uploaded
+    if (reportCount === 2 && !status.secondReportUploaded) {
+      await markSecondReportUploaded(userId);
+      console.log('✅ Marked second report uploaded for onboarding');
+    }
+  } catch (error) {
+    console.error('⚠️ Failed to update onboarding progress:', error);
+    // Don't throw - this shouldn't break report upload
+  }
 }
 
 export async function GET() {

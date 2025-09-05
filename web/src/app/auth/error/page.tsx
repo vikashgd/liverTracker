@@ -28,6 +28,18 @@ function AuthErrorContent() {
           message: 'The verification token has expired or is invalid.',
           details: 'Please try signing in again.'
         };
+      case 'Callback':
+        return {
+          title: 'OAuth Callback Error',
+          message: 'There was an issue processing the OAuth response.',
+          details: 'This is usually temporary. Please try signing in again, or use email/password authentication.'
+        };
+      case 'OAuthCallback':
+        return {
+          title: 'OAuth Processing Error',
+          message: 'The OAuth provider response could not be processed.',
+          details: 'Please try again or use email/password authentication as an alternative.'
+        };
       default:
         return {
           title: 'Authentication Error',

@@ -20,18 +20,43 @@ export default function FastDashboard() {
   useEffect(() => {
     if (status === 'authenticated') {
       fetchReports();
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
     }
+    
+    // Fallback timeout to prevent infinite loading
+    const fallbackTimer = setTimeout(() => {
+      console.warn('Dashboard loading timeout - forcing ready state');
+      setLoading(false);
+    }, 10000);
+    
+    return () => clearTimeout(fallbackTimer);
   }, [status]);
 
   const fetchReports = async () => {
     try {
-      const response = await fetch('/api/fast/reports?limit=5');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+      const response = await fetch('/api/fast/reports?limit=5', {
+        signal: controller.signal,
+        cache: 'no-store'
+      });
+      
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
         const data = await response.json();
         setReports(data.reports || []);
+      } else {
+        console.warn('Reports API returned:', response.status);
       }
     } catch (error) {
-      console.error('Failed to fetch reports:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn('Reports API timed out');
+      } else {
+        console.error('Failed to fetch reports:', error);
+      }
     } finally {
       setLoading(false);
     }

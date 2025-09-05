@@ -78,7 +78,11 @@ export async function GET(req: NextRequest) {
   const storage = new GCSStorage();
   const key = `exports/summary-${userId}-${Date.now()}.pdf`;
   await storage.putObject(key, content, "application/pdf");
-  const { url } = await storage.signDownloadURL({ key });
+  const signed = await storage.signDownloadURL({ key });
+  if (!signed) {
+    throw new Error('Failed to generate download URL for summary PDF');
+  }
+  const { url } = signed;
   
   return NextResponse.json({ url });
 }

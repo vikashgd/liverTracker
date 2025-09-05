@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PDFViewer } from './pdf-viewer';
 
 // Full-screen image viewer component
@@ -59,8 +59,35 @@ export function FileImageDisplay({ objectKey, fileName }: FileDisplayProps) {
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showZoom, setShowZoom] = useState(false);
+  const [fileExists, setFileExists] = useState<boolean | null>(null);
 
   const imageUrl = `/api/files/${encodeURIComponent(objectKey)}`;
+
+  // Check if file exists before trying to display it
+  useEffect(() => {
+    const checkFileExists = async () => {
+      try {
+        const response = await fetch(imageUrl, { method: 'HEAD' });
+        if (response.ok) {
+          setFileExists(true);
+        } else if (response.status === 404) {
+          setFileExists(false);
+          setImageError(true);
+          setIsLoading(false);
+        } else {
+          // Other errors, try to load anyway
+          setFileExists(true);
+        }
+      } catch (error) {
+        console.error('Error checking file existence:', error);
+        setFileExists(false);
+        setImageError(true);
+        setIsLoading(false);
+      }
+    };
+
+    checkFileExists();
+  }, [imageUrl]);
 
   const handleDownload = () => {
     const link = document.createElement('a');
@@ -117,17 +144,19 @@ export function FileImageDisplay({ objectKey, fileName }: FileDisplayProps) {
               <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>
             </div>
           )}
-          <img
-            src={imageUrl}
-            alt={fileName}
-            className="w-full h-auto max-h-96 object-contain cursor-pointer"
-            onLoad={() => setIsLoading(false)}
-            onError={() => {
-              setImageError(true);
-              setIsLoading(false);
-            }}
-            onClick={() => setShowZoom(true)}
-          />
+          {fileExists && (
+            <img
+              src={imageUrl}
+              alt={fileName}
+              className="w-full h-auto max-h-96 object-contain cursor-pointer"
+              onLoad={() => setIsLoading(false)}
+              onError={() => {
+                setImageError(true);
+                setIsLoading(false);
+              }}
+              onClick={() => setShowZoom(true)}
+            />
+          )}
         </div>
       </div>
 
@@ -147,9 +176,43 @@ export function FilePdfDisplay({ objectKey, fileName }: FileDisplayProps) {
   const [showZoomViewer, setShowZoomViewer] = useState(false);
   const [pdfError, setPdfError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [fileExists, setFileExists] = useState<boolean | null>(null);
   
   const pdfUrl = `/api/files/${encodeURIComponent(objectKey)}`;
   const reportId = objectKey.split('/').pop() || 'unknown';
+
+  // Check if file exists before trying to display it
+  React.useEffect(() => {
+    const checkFileExists = async () => {
+      try {
+        console.log('🔍 Checking PDF file existence:', pdfUrl);
+        const response = await fetch(pdfUrl, { method: 'HEAD' });
+        console.log('📄 PDF file check response:', response.status, response.statusText);
+        
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          console.log('📄 PDF content type:', contentType);
+          setFileExists(true);
+        } else if (response.status === 404) {
+          console.log('❌ PDF file not found (404)');
+          setFileExists(false);
+          setPdfError(true);
+          setIsLoading(false);
+        } else {
+          console.log('⚠️ PDF file check returned non-200 status, trying to load anyway');
+          // Other errors, try to load anyway
+          setFileExists(true);
+        }
+      } catch (error) {
+        console.error('❌ Error checking PDF file existence:', error);
+        setFileExists(false);
+        setPdfError(true);
+        setIsLoading(false);
+      }
+    };
+
+    checkFileExists();
+  }, [pdfUrl]);
 
   const handleDownload = () => {
     const link = document.createElement('a');
@@ -228,18 +291,25 @@ export function FilePdfDisplay({ objectKey, fileName }: FileDisplayProps) {
             </div>
           )}
           
-          {/* Inline PDF Preview using iframe */}
-          <iframe
-            src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-            className="w-full h-96 border-0 cursor-pointer"
-            onLoad={() => setIsLoading(false)}
-            onError={() => {
-              setPdfError(true);
-              setIsLoading(false);
-            }}
-            onClick={() => setShowZoomViewer(true)}
-            title={`PDF Preview: ${fileName}`}
-          />
+          {/* Inline PDF Preview using iframe - only render if file exists */}
+          {fileExists && (
+            <iframe
+              src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+              className="w-full h-96 border-0 cursor-pointer"
+              onLoad={() => {
+                console.log('✅ PDF iframe loaded successfully');
+                setIsLoading(false);
+              }}
+              onError={(e) => {
+                console.error('❌ PDF iframe failed to load:', e);
+                setPdfError(true);
+                setIsLoading(false);
+              }}
+              onClick={() => setShowZoomViewer(true)}
+              title={`PDF Preview: ${fileName}`}
+              allow="same-origin"
+            />
+          )}
         </div>
       </div>
 

@@ -193,8 +193,10 @@ export function MedicalUploader() {
           imageUrls.push(downloadRes.url);
         }
 
-        // Set the main object key
-        const mainKey = `reports/${Date.now()}-batch-report`;
+        // Set the main object key with proper extension
+        const firstFile = files[0];
+        const extension = firstFile?.name ? firstFile.name.split('.').pop() : 'jpg';
+        const mainKey = `reports/${Date.now()}-batch-report.${extension}`;
         setObjectKey(mainKey);
 
         // Extract from all images at once
@@ -601,7 +603,15 @@ export function MedicalUploader() {
                   setSaving(true);
                   setBusy(true);
                   setError(null);
-                  const key = objectKey ?? `reports/${Date.now()}-${files.length > 1 ? 'batch-report' : (files[0]?.name ?? "report")}`;
+                  const key = objectKey ?? (() => {
+                    if (files.length > 1) {
+                      const firstFile = files[0];
+                      const extension = firstFile?.name ? firstFile.name.split('.').pop() : 'jpg';
+                      return `reports/${Date.now()}-batch-report.${extension}`;
+                    } else {
+                      return `reports/${Date.now()}-${files[0]?.name ?? "report.pdf"}`;
+                    }
+                  })();
                   try {
                     const res = await fetch("/api/reports", {
                       method: "POST",

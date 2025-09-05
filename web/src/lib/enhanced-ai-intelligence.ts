@@ -184,7 +184,7 @@ export class EnhancedAIIntelligence {
     patterns.forEach(pattern => {
       if (pattern.significance === 'high') {
         insights.push({
-          id: `pattern_${pattern.type}_${Date.now()}`,
+          id: `pattern_${pattern.type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: 'pattern',
           severity: pattern.type === 'threshold' ? 'medium' : 'info',
           title: `${pattern.type.charAt(0).toUpperCase() + pattern.type.slice(1)} Pattern Detected`,
@@ -206,7 +206,7 @@ export class EnhancedAIIntelligence {
         const isWorseningPredicted = this.isPredictionConcerning(prediction.metric, likelyValue.value);
         
         insights.push({
-          id: `prediction_${prediction.metric}_${Date.now()}`,
+          id: `prediction_${prediction.metric}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: 'prediction',
           severity: isWorseningPredicted ? 'medium' : 'info',
           title: `${prediction.metric} Forecast`,
@@ -245,7 +245,7 @@ export class EnhancedAIIntelligence {
     const riskLevel = this.assessRiskLevel(meldScore);
 
     return {
-      id: `careplan_${Date.now()}`,
+      id: `careplan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       patientProfile: this.patientData,
       currentStatus,
       meldScore,
@@ -526,7 +526,7 @@ export class EnhancedAIIntelligence {
       }
 
       insights.push({
-        id: `meld_assessment_${Date.now()}`,
+        id: `meld_assessment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: 'alert',
         severity,
         title: `MELD Score Assessment: ${meldScore}`,
@@ -556,7 +556,7 @@ export class EnhancedAIIntelligence {
       
       if (latestALT < 40 && latestAST < 40) {
         insights.push({
-          id: `milestone_normal_enzymes_${Date.now()}`,
+          id: `milestone_normal_enzymes_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: 'milestone',
           severity: 'info',
           title: '🎉 Liver Enzymes Normalized',

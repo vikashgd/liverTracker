@@ -6,6 +6,83 @@ import { ExportPdfButton } from "@/components/export-pdf-button";
 import { DeleteReportButton } from "@/components/delete-report-button";
 import { formatMedicalValue, formatValueWithUnit } from "@/lib/medical-display-formatter";
 import { FileImageDisplay, FilePdfDisplay, FileDownloadDisplay } from "@/components/file-display-components";
+import { MultiFileDisplay } from "@/components/multi-file-display";
+import { discoverBatchFiles, isBatchUpload } from "@/lib/batch-file-discovery";
+
+// Batch file display component
+function BatchFileDisplay({ reportId, primaryObjectKey, contentType }: {
+  reportId: string;
+  primaryObjectKey: string;
+  contentType: string;
+}) {
+  const [batchFiles, setBatchFiles] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadBatchFiles = async () => {
+      try {
+        setIsLoading(true);
+        const files = await discoverBatchFiles(primaryObjectKey);
+        setBatchFiles(files);
+        console.log(`📦 Discovered ${files.length} batch files:`, files);
+      } catch (err) {
+        console.error('❌ Failed to discover batch files:', err);
+        setError('Failed to load batch files');
+        // Fallback to single file display
+        const fileName = primaryObjectKey.split('/').pop() || 'Unknown file';
+        setBatchFiles([{
+          objectKey: primaryObjectKey,
+          fileName: fileName,
+          contentType: contentType
+        }]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadBatchFiles();
+  }, [primaryObjectKey, contentType]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+            <div>
+              <h4 className="font-medium text-blue-800">Loading Batch Files...</h4>
+              <p className="text-sm text-blue-700">Discovering all uploaded images...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && batchFiles.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+          <div className="flex items-center space-x-2">
+            <span className="text-red-600 text-lg">⚠️</span>
+            <div>
+              <h4 className="font-medium text-red-800">Error Loading Files</h4>
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <MultiFileDisplay
+      reportId={reportId}
+      files={batchFiles}
+    />
+  );
+}
 
 // Enhanced trending chart component for the right panel
 function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
@@ -370,8 +447,8 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
           <div className="bg-gray-50 rounded-lg p-3 text-center">
             <div className="text-xs text-gray-600">Current Status</div>
             <div className={`text-sm font-semibold ${parseFloat(selectedMetric?.value || '0') >= chartData.range.low &&
-                parseFloat(selectedMetric?.value || '0') <= chartData.range.high
-                ? 'text-green-600' : 'text-red-600'
+              parseFloat(selectedMetric?.value || '0') <= chartData.range.high
+              ? 'text-green-600' : 'text-red-600'
               }`}>
               {parseFloat(selectedMetric?.value || '0') >= chartData.range.low &&
                 parseFloat(selectedMetric?.value || '0') <= chartData.range.high
@@ -788,21 +865,57 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-blue-100">
                   <h2 className="text-xl font-bold text-gray-900 flex items-center">
                     <span className="mr-3 text-2xl">📄</span>
-                    Original Report File
+                    Original Document
                   </h2>
                   <p className="text-gray-600 mt-1">
-                    {report.contentType?.includes('image') ? 'Medical report image' : 'Medical report document'}
+                    View and interact with the uploaded file
                   </p>
                 </div>
 
                 <div className="p-6">
-                  {report.contentType?.includes('image') ? (
-                    <FileImageDisplay objectKey={report.objectKey} fileName={report.objectKey?.split('/').pop() || 'Report'} />
-                  ) : report.contentType?.includes('pdf') ? (
-                    <FilePdfDisplay objectKey={report.objectKey} fileName={report.objectKey?.split('/').pop() || 'Report'} />
-                  ) : (
-                    <FileDownloadDisplay objectKey={report.objectKey} fileName={report.objectKey?.split('/').pop() || 'Report'} contentType={report.contentType} />
-                  )}
+                  {(() => {
+                    const fileName = report.objectKey.split('/').pop() || 'Unknown file';
+                    const contentType = report.contentType || '';
+                    
+                    // Handle batch images or multiple files
+                    if (contentType === 'image/batch' || fileName.includes('batch')) {
+                      // This is a batch upload - discover and display all related files
+                      return (
+                        <BatchFileDisplay
+                          reportId={report.id}
+                          primaryObjectKey={report.objectKey}
+                          contentType={contentType}
+                        />
+                      );
+                    }
+                    
+                    // Regular single file handling
+                    if (contentType.includes('image/') || fileName.match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i)) {
+                      return (
+                        <FileImageDisplay
+                          objectKey={report.objectKey}
+                          fileName={fileName}
+                          contentType={contentType}
+                        />
+                      );
+                    } else if (contentType.includes('pdf') || fileName.match(/\.pdf$/i)) {
+                      return (
+                        <FilePdfDisplay
+                          objectKey={report.objectKey}
+                          fileName={fileName}
+                          contentType={contentType}
+                        />
+                      );
+                    } else {
+                      return (
+                        <FileDownloadDisplay
+                          objectKey={report.objectKey}
+                          fileName={fileName}
+                          contentType={contentType}
+                        />
+                      );
+                    }
+                  })()}
                 </div>
               </div>
             )}

@@ -58,6 +58,7 @@ export interface UploadFlowState {
   
   // Storage
   objectKey: string | null;
+  allUploadedKeys: string[] | null;
 }
 
 // Processing overlay state
