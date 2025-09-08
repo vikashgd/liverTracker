@@ -11,7 +11,7 @@ const Body = z.object({
   objectKey: z.string(),
   contentType: z.string(),
   reportType: z.string().nullable().optional(),
-  reportDate: z.string().datetime().nullable().optional(),
+  reportDate: z.string().nullable().optional(),
   extracted: z
     .object({
       reportType: z.string().nullable().optional(),
@@ -69,10 +69,36 @@ export async function POST(req: NextRequest) {
     data = Body.parse(await req.json());
     
     safeDate = (() => {
+      // Debug: Log what we received
+      console.log('🔍 Date debugging - Received data:');
+      console.log('  - Top-level reportDate:', data.reportDate);
+      console.log('  - Extracted reportDate:', data.extracted?.reportDate);
+      console.log('  - Full extracted object keys:', data.extracted ? Object.keys(data.extracted) : 'null');
+      
+      // Priority: 1. Top-level reportDate, 2. Extracted reportDate, 3. Current date
       const s = data.reportDate ?? data.extracted?.reportDate ?? null;
-      if (!s) return new Date(); // Default to current date
-      const d = new Date(s);
-      return isNaN(d.getTime()) ? new Date() : d;
+      console.log('  - Selected date string:', s);
+      
+      if (!s) {
+        console.log('⚠️ No report date found, using current date as fallback');
+        return new Date(); // Default to current date
+      }
+      // Handle both YYYY-MM-DD and ISO datetime formats
+      let d: Date;
+      if (s.includes('T')) {
+        // Already in ISO format
+        d = new Date(s);
+      } else {
+        // Assume YYYY-MM-DD format from HTML date input
+        d = new Date(s + 'T00:00:00.000Z');
+      }
+      
+      if (isNaN(d.getTime())) {
+        console.log(`⚠️ Invalid date format: ${s}, using current date as fallback`);
+        return new Date();
+      }
+      console.log(`✅ Using report date: ${d.toISOString()} (from input: ${s})`);
+      return d;
     })();
     
     // Initialize the medical platform

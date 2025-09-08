@@ -122,5 +122,6 @@ export function createInitialUploadFlowState(): UploadFlowState {
     showProcessingOverlay: false,
     autoAdvanceEnabled: true,
     objectKey: null,
+    allUploadedKeys: null
   };
 }

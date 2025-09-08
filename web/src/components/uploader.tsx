@@ -355,6 +355,7 @@ export function Uploader() {
                   body: JSON.stringify({
                     objectKey: key,
                     contentType: file?.type ?? "application/octet-stream",
+                    reportDate: edited.reportDate, // Send manual date at top level for priority
                     extracted: edited,
                   }),
                 });

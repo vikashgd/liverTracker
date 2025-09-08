@@ -8,6 +8,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Test comment to trigger change detection
+
 model User {
   id            String          @id @default(cuid())
   email         String?         @unique
@@ -31,6 +33,7 @@ model User {
   pdfExports    PdfExport[]
   reportFiles   ReportFile[]
   sessions      Session[]
+  shareLinks    ShareLink[]
   timeline      TimelineEvent[]
 }
 
@@ -179,4 +182,63 @@ model AuditLog {
   details      Json?
   timestamp    DateTime @default(now())
   user         User?    @relation(fields: [userId], references: [id])
+}
+
+enum ShareType {
+  COMPLETE_PROFILE
+  SPECIFIC_REPORTS
+  CONSULTATION_PACKAGE
+}
+
+model ShareLink {
+  id                String        @id @default(cuid())
+  token             String        @unique // 32-character cryptographically secure token
+  userId            String
+  shareType         ShareType     @default(COMPLETE_PROFILE)
+  title             String
+  description       String?
+  
+  // Content Selection
+  reportIds         String[]      // Specific reports to include (empty = all)
+  includeProfile    Boolean       @default(true)
+  includeDashboard  Boolean       @default(true)
+  includeScoring    Boolean       @default(true)
+  includeAI         Boolean       @default(true)
+  includeFiles      Boolean       @default(true)
+  
+  // Access Control
+  expiresAt         DateTime
+  maxViews          Int?          // Optional view limit
+  currentViews      Int           @default(0)
+  password          String?       // Optional bcrypt hashed password
+  allowedEmails     String[]      // Specific healthcare provider emails
+  
+  // Status & Metadata
+  isActive          Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  lastAccessedAt    DateTime?
+  
+  // Relationships
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessLogs        ShareAccess[]
+  
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ShareAccess {
+  id              String    @id @default(cuid())
+  shareLinkId     String
+  ipAddress       String
+  userAgent       String
+  accessedAt      DateTime  @default(now())
+  viewDuration    Int?      // Duration in seconds
+  actionsPerformed Json?    // Track what was viewed/downloaded
+  
+  shareLink       ShareLink @relation(fields: [shareLinkId], references: [id], onDelete: Cascade)
+  
+  @@index([shareLinkId])
+  @@index([accessedAt])
 }

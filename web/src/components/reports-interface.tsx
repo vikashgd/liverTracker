@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from "next/link";
 import { DeleteReportButton } from "./delete-report-button";
+import { QuickShareButton, ShareWithDoctorButton } from "./medical-sharing/share-report-button";
 
 interface Report {
   id: string;
@@ -310,7 +311,9 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
   const formatReportDate = (date: Date) => {
     const d = new Date(date);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${months[d.getMonth()]} ${d.getDate()}`;
+    
+    // Always show year for clarity, especially for older reports
+    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   };
 
   const getStatusIndicator = (report: Report) => {
@@ -364,6 +367,19 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                 <span className="mr-2">📊</span>
                 <span>Lab Analytics</span>
               </Link>
+              <Link 
+                href="/share-management" 
+                className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                <span className="mr-2">🔗</span>
+                <span>Manage Shares</span>
+              </Link>
+              {reports.length > 0 && (
+                <ShareWithDoctorButton 
+                  reportIds={reports.map(r => r.id)}
+                  className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                />
+              )}
               <Link 
                 href="/" 
                 className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -622,6 +638,12 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                           </span>
                         );
                       })}
+                      
+                      {/* Visit-Level Share Button */}
+                      <ShareWithDoctorButton 
+                        reportIds={visit.reports.map(r => r.id)}
+                        className="ml-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                      />
                     </div>
                   </div>
                 </div>
@@ -680,6 +702,10 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                               <span className="mr-1">👁️</span>
                               View & Preview
                             </Link>
+                            <QuickShareButton 
+                              reportId={report.id}
+                              className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-md transition-colors"
+                            />
                             <button 
                               onClick={async () => {
                                 if (!report.objectKey) {
@@ -751,6 +777,10 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                               <span className="mr-1">👁️</span>
                               Preview
                             </Link>
+                            <QuickShareButton 
+                              reportId={report.id}
+                              className="inline-flex items-center px-3 py-2 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-md transition-colors"
+                            />
                             <button 
                               onClick={async () => {
                                 if (!report.objectKey) {

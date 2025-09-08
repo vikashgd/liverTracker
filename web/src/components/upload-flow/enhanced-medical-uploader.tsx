@@ -82,7 +82,8 @@ export function EnhancedMedicalUploader() {
     error: null,
     showProcessingOverlay: false,
     autoAdvanceEnabled: true,
-    objectKey: null
+    objectKey: null,
+    allUploadedKeys: null
   });
 
   const updateFlowState = useCallback((updates: Partial<UploadFlowState>) => {
@@ -103,7 +104,8 @@ export function EnhancedMedicalUploader() {
       error: null,
       showProcessingOverlay: false,
       autoAdvanceEnabled: true,
-      objectKey: null
+      objectKey: null,
+      allUploadedKeys: null
     });
   }, []);
 
@@ -297,8 +299,11 @@ export function EnhancedMedicalUploader() {
     }
   }, [flowState.uploadedFiles, updateFlowState]);
 
-  const handleSaveReport = useCallback(async () => {
-    if (!flowState.extractedData) {
+  const handleSaveReport = useCallback(async (editedData?: any) => {
+    // Use edited data if provided, otherwise fall back to flow state
+    const dataToSave = editedData || flowState.extractedData;
+    
+    if (!dataToSave) {
       updateFlowState({ error: "No data to save. Please process files first." });
       return;
     }
@@ -307,12 +312,17 @@ export function EnhancedMedicalUploader() {
 
     try {
       // Validate extracted data before saving
-      if (typeof flowState.extractedData !== 'object' || Object.keys(flowState.extractedData).length === 0) {
+      if (typeof dataToSave !== 'object' || Object.keys(dataToSave).length === 0) {
         throw new Error('Invalid extracted data. Please process files again.');
       }
 
       // Use the stored objectKey from the upload process
       const key = flowState.objectKey || generateReportKey(flowState.uploadedFiles, flowState.uploadedFiles.length > 1);
+      
+      console.log('🔍 Enhanced Uploader - Saving with data:', {
+        reportDate: dataToSave?.reportDate,
+        dataKeys: Object.keys(dataToSave)
+      });
       
       const res = await fetch("/api/reports", {
         method: "POST",
@@ -320,7 +330,8 @@ export function EnhancedMedicalUploader() {
         body: JSON.stringify({
           objectKey: key,
           contentType: flowState.uploadedFiles.length > 1 ? "image/batch" : (flowState.uploadedFiles[0]?.type ?? "application/octet-stream"),
-          extracted: flowState.extractedData,
+          reportDate: dataToSave?.reportDate, // Send manual date at top level for priority
+          extracted: dataToSave,
         }),
       });
 

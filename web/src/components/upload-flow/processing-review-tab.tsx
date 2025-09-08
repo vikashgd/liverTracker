@@ -10,7 +10,7 @@ export interface ProcessingReviewTabProps {
   onProcessingComplete?: (data: any) => void;
   onCancelProcessing?: () => void;
   onRescan?: () => void;
-  onSaveReport?: () => void;
+  onSaveReport?: (data?: any) => void;
 }
 
 export function ProcessingReviewTab({
@@ -44,8 +44,8 @@ export function ProcessingReviewTab({
             onSave={(data) => {
               // Update the extracted data with any edits
               onProcessingComplete?.(data);
-              // Then save the report
-              onSaveReport?.();
+              // Pass the edited data directly to save
+              onSaveReport?.(data);
             }}
             onRescan={() => onRescan?.()}
             isSaving={flowState.isSaving}

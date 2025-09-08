@@ -31,7 +31,7 @@ export interface UploadFlowTabsProps {
   onFileRemoved: (index: number) => void;
   onClearAllFiles: () => void;
   onProcessFiles?: () => void;
-  onSaveReport?: () => void;
+  onSaveReport?: (data?: any) => void;
   onResetFlow?: () => void;
   className?: string;
 }
@@ -336,7 +336,7 @@ export function UploadFlowTabs({
                 });
                 navigateToTab(1);
               }}
-              onSaveReport={onSaveReport}
+              onSaveReport={(data) => onSaveReport?.(data)}
             />
           </div>
         </TabsContent>

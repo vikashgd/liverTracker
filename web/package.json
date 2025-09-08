@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node prevent-auto-migration.js --check",
     "dev": "next dev --turbopack",
     "dev:network": "next dev --turbopack -H 0.0.0.0",
+    "dev:8080": "next dev --turbopack -H 0.0.0.0 -p 8080",
+    "prebuild": "node prevent-auto-migration.js --check",
     "build": "next build",
     "start": "next start",
     "start:network": "next start -H 0.0.0.0",
@@ -16,7 +19,9 @@
     "migrate:analyze": "npm run migrate -- analyze",
     "migrate:dry-run": "npm run migrate -- migrate --dry-run",
     "migrate:execute": "npm run migrate -- migrate",
-    "migrate:validate": "npm run migrate -- validate"
+    "migrate:validate": "npm run migrate -- validate",
+    "schema:check": "node prevent-auto-migration.js --check",
+    "schema:approve": "node prevent-auto-migration.js --approve"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",

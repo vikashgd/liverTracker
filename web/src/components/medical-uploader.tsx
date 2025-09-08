@@ -619,6 +619,7 @@ export function MedicalUploader() {
                       body: JSON.stringify({
                         objectKey: key,
                         contentType: files.length > 1 ? "image/batch" : (files[0]?.type ?? "application/octet-stream"),
+                        reportDate: edited.reportDate, // Send manual date at top level for priority
                         extracted: edited,
                       }),
                     });

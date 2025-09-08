@@ -38,7 +38,7 @@ export function detectBatchFile(objectKey: string, contentType?: string): boolea
   
   const hasBatchContentType = contentType === 'image/batch' || 
                              contentType === 'application/batch' ||
-                             contentType?.includes('batch');
+                             (contentType?.includes('batch') ?? false);
   
   return hasBatchName || hasBatchContentType;
 }
