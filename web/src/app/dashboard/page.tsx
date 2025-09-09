@@ -105,33 +105,21 @@ export default async function DashboardPage() {
   // If no reports, show onboarding state in dashboard
   const isNewUser = reportCount === 0;
 
-  // Load essential metrics first for faster loading - including Creatinine which is critical
-  const essentialMetrics: CanonicalMetric[] = [
-    'ALT', 'AST', 'Bilirubin', 'Platelets', 'Creatinine', 'Albumin', 'INR'
-  ];
-
-  console.log(`📊 Loading ${essentialMetrics.length} essential metrics for faster dashboard...`);
-
-  // Load essential metrics first
-  const chartData = await Promise.all(
-    essentialMetrics.map(async (metric) => {
-      const data = await loadSeries(userId, metric);
-      return { metric, data };
-    })
-  );
-
-  // Add empty data for other metrics to prevent UI breaks
+  // Load ALL metrics including Additional Health Markers
   const allMetrics: CanonicalMetric[] = [
     'ALT', 'AST', 'Platelets', 'Bilirubin', 'Albumin', 'Creatinine', 
     'INR', 'ALP', 'GGT', 'TotalProtein', 'Sodium', 'Potassium'
   ];
 
-  // Fill in missing metrics with empty data
-  allMetrics.forEach(metric => {
-    if (!chartData.find(item => item.metric === metric)) {
-      chartData.push({ metric, data: [] });
-    }
-  });
+  console.log(`📊 Loading ${allMetrics.length} metrics including Additional Health Markers...`);
+
+  // Load ALL metrics (not just essential ones)
+  const chartData = await Promise.all(
+    allMetrics.map(async (metric) => {
+      const data = await loadSeries(userId, metric);
+      return { metric, data };
+    })
+  );
 
   console.log(`✅ Medical Platform loaded data for ${chartData.length} metrics:`, 
     chartData.map(({ metric, data }) => ({ 

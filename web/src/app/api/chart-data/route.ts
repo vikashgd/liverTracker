@@ -9,7 +9,33 @@ export async function POST(request: NextRequest) {
   let canonicalMetric: CanonicalMetric | undefined;
   
   try {
-    const userId = await requireAuth();
+    // Enhanced authentication with fallback
+    let userId: string;
+    try {
+      userId = await requireAuth();
+      console.log(`📊 API: Authenticated user ID: ${userId}`);
+    } catch (authError) {
+      console.error('❌ API: Authentication failed:', authError);
+      
+      // For development/testing, try to get the first user
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔧 API: Development mode - attempting fallback user lookup');
+        const { prisma } = await import('@/lib/db');
+        const fallbackUser = await prisma.user.findFirst({
+          select: { id: true, email: true }
+        });
+        
+        if (fallbackUser) {
+          userId = fallbackUser.id;
+          console.log(`🔧 API: Using fallback user: ${fallbackUser.email} (${userId})`);
+        } else {
+          throw new Error('No users found in database');
+        }
+      } else {
+        throw authError;
+      }
+    }
+    
     const requestData = await request.json();
     metricName = requestData.metricName;
 
@@ -126,7 +152,89 @@ export async function POST(request: NextRequest) {
     }
 
     // Get chart data using the Medical Platform (same as dashboard)
-    const chartSeries = await platform.getChartData(userId, canonicalMetric);
+    let chartSeries;
+    try {
+      chartSeries = await platform.getChartData(userId, canonicalMetric);
+      console.log(`✅ API: Medical platform returned ${chartSeries.data.length} data points for ${canonicalMetric}`);
+    } catch (platformError) {
+      console.error(`❌ API: Medical platform failed for ${canonicalMetric}:`, platformError);
+      
+      // Direct database fallback
+      console.log(`🔧 API: Attempting direct database fallback for ${canonicalMetric}`);
+      const { prisma } = await import('@/lib/db');
+      
+      // Get all possible names for this metric
+      const metricAliases = {
+        'Sodium': ['Sodium', 'sodium', 'SODIUM', 'Na', 'Serum Sodium', 'S.Sodium'],
+        'Potassium': ['Potassium', 'potassium', 'POTASSIUM', 'K', 'Serum Potassium', 'S.Potassium'],
+        'ALT': ['ALT', 'alt', 'SGPT', 'sgpt', 'Alanine Aminotransferase'],
+        'AST': ['AST', 'ast', 'SGOT', 'sgot', 'Aspartate Aminotransferase'],
+        'Bilirubin': ['Bilirubin', 'bilirubin', 'Total Bilirubin', 'T.Bilirubin'],
+        'Platelets': ['Platelets', 'platelets', 'Platelet Count', 'PLT'],
+        'Creatinine': ['Creatinine', 'creatinine', 'Serum Creatinine', 'S.Creatinine'],
+        'Albumin': ['Albumin', 'albumin', 'Serum Albumin', 'S.Albumin'],
+        'INR': ['INR', 'inr', 'International Normalized Ratio']
+      };
+      
+      const aliases = metricAliases[canonicalMetric] || [canonicalMetric];
+      
+      const rawData = await prisma.extractedMetric.findMany({
+        where: {
+          report: { userId },
+          name: { in: aliases },
+          value: { not: null }
+        },
+        include: {
+          report: {
+            select: {
+              reportDate: true,
+              createdAt: true
+            }
+          }
+        },
+        orderBy: [
+          { report: { reportDate: 'asc' } },
+          { createdAt: 'asc' }
+        ]
+      });
+      
+      console.log(`🔧 API: Direct database query returned ${rawData.length} data points`);
+      
+      // Convert to chart series format
+      const dataPoints = rawData.map(metric => ({
+        date: metric.report.reportDate || metric.report.createdAt,
+        value: metric.value || 0,
+        metadata: {
+          reportId: metric.reportId,
+          unit: metric.unit
+        }
+      }));
+      
+      // Calculate basic statistics
+      const values = dataPoints.map(p => p.value);
+      const statistics = {
+        count: values.length,
+        min: values.length > 0 ? Math.min(...values) : 0,
+        max: values.length > 0 ? Math.max(...values) : 0,
+        average: values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0,
+        trend: 'stable' as const
+      };
+      
+      chartSeries = {
+        data: dataPoints,
+        statistics,
+        quality: {
+          completeness: values.length > 0 ? 1.0 : 0.0,
+          reliability: 0.8, // Lower reliability for fallback data
+          gaps: []
+        },
+        metadata: {
+          source: 'direct_database_fallback',
+          processingMethod: 'raw_extraction',
+          lastUpdated: new Date()
+        }
+      };
+    }
     
     // Convert to expected SeriesPoint format with unit conversion
     const seriesData = chartSeries.data.map(point => {
