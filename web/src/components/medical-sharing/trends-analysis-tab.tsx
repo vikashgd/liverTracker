@@ -343,9 +343,11 @@ export function TrendsAnalysisTab({ trends }: TrendsAnalysisTabProps) {
 
       {/* Trends Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {trends.map((series, index) => 
-          createTrendChart(series.data, series.name, series.unit, series.referenceRange)
-        )}
+        {trends.map((series, index) => (
+          <div key={`trend-chart-${index}-${series.name}`}>
+            {createTrendChart(series.data, series.name, series.unit, series.referenceRange)}
+          </div>
+        ))}
       </div>
 
       {/* Detailed Analysis */}

@@ -227,27 +227,48 @@ export function PatientProfileTab({ profile }: PatientProfileTabProps) {
         </div>
       )}
 
-      {/* Privacy Notice */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+      {/* HIPAA Compliance Notice */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start gap-2">
-          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <AlertTriangle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="font-semibold text-amber-900 mb-2">Privacy Protection</h4>
-            <div className="text-amber-800 text-sm space-y-1">
+            <h4 className="font-semibold text-blue-900 mb-2">HIPAA Privacy Protection</h4>
+            <div className="text-blue-800 text-sm space-y-1">
               <p>
-                Patient profile information is shared according to the privacy settings 
-                configured by the patient. Some information may be anonymized or excluded.
+                {profile.privacyNotice || 
+                 'Patient information is anonymized in compliance with HIPAA and applicable privacy laws. Direct identifiers have been removed or protected.'}
+              </p>
+              <p>
+                <strong>Share Type:</strong> {profile.shareType || 'Healthcare Provider'}
               </p>
               <p>
                 <strong>Anonymization Level:</strong> {profile.anonymizationLevel || 'Standard'}
               </p>
               <p>
-                All access to this profile information is logged and monitored for compliance purposes.
+                <strong>Privacy Controls:</strong> Names anonymized, dates protected, contact info excluded
+              </p>
+              <p>
+                All access to this medical information is logged and monitored for compliance purposes.
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Additional Privacy Notice for Name Display */}
+      {profile.name && profile.name.includes('[') && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs">✓</span>
+            </div>
+            <div className="text-green-800 text-sm">
+              <strong>Privacy Compliant:</strong> Patient identity is protected through anonymization. 
+              Clinical data is preserved for medical consultation while maintaining confidentiality.
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

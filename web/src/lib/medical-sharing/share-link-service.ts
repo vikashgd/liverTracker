@@ -130,8 +130,10 @@ export class ShareLinkService {
         }
       });
 
-      // Generate full URL
-      const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+      // Generate full URL - check for port 8080 first, then fallback to NEXTAUTH_URL
+      const baseUrl = process.env.NEXTAUTH_URL?.includes('8080') 
+        ? process.env.NEXTAUTH_URL 
+        : process.env.NEXTAUTH_URL?.replace(':3000', ':8080') || 'http://localhost:8080';
       const shareUrl = `${baseUrl}/share/${token}`;
 
       return {
@@ -317,9 +319,15 @@ export class ShareLinkService {
         }
       });
 
+      // Generate base URL - check for port 8080 first, then fallback to NEXTAUTH_URL
+      const baseUrl = process.env.NEXTAUTH_URL?.includes('8080') 
+        ? process.env.NEXTAUTH_URL 
+        : process.env.NEXTAUTH_URL?.replace(':3000', ':8080') || 'http://localhost:8080';
+
       return shareLinks.map(shareLink => ({
         id: shareLink.id,
         token: shareLink.token,
+        url: `${baseUrl}/share/${shareLink.token}`, // Add the full URL
         userId: shareLink.userId,
         shareType: shareLink.shareType,
         title: shareLink.title,

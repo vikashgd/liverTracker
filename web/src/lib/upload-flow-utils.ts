@@ -218,13 +218,13 @@ export function canProceedFromCurrentTab(state: UploadFlowState): boolean {
 export function getTabTitle(tabId: TabId): string {
   switch (tabId) {
     case 1:
-      return 'Upload & Preview';
+      return '';
     case 2:
-      return 'Review & Save';
+      return '';
     case 3:
-      return 'Success';
+      return '';
     default:
-      return 'Unknown';
+      return '';
   }
 }
 

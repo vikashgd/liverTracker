@@ -54,21 +54,71 @@ export function ShareManagementPanel({ className = "" }: ShareManagementPanelPro
   const fetchShareLinks = async () => {
     try {
       setIsLoading(true);
+      console.log('🔄 Fetching share links from API...');
       const response = await fetch('/api/share-links');
       if (response.ok) {
         const data = await response.json();
+        console.log('📊 API Response:', data);
+        console.log('🔗 Share links received:', data.shareLinks);
+        
+        if (data.shareLinks && data.shareLinks.length > 0) {
+          console.log('🔍 First share link URL:', data.shareLinks[0].url);
+        }
+        
         setShareLinks(data.shareLinks || []);
+      } else {
+        console.error('❌ API response not OK:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error('Failed to fetch share links:', error);
+      console.error('❌ Failed to fetch share links:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCopyLink = (url: string) => {
-    navigator.clipboard.writeText(url);
-    // Could add toast notification here
+  const handleCopyLink = async (url: string) => {
+    console.log('🔍 Copy button clicked with URL:', url);
+    
+    if (!url) {
+      console.error('❌ URL is empty or undefined');
+      alert('Error: No URL to copy');
+      return;
+    }
+
+    try {
+      console.log('📋 Attempting clipboard.writeText...');
+      await navigator.clipboard.writeText(url);
+      console.log('✅ Link copied to clipboard successfully:', url);
+      alert('Link copied to clipboard!');
+    } catch (error) {
+      console.error('❌ Clipboard API failed:', error);
+      console.log('🔄 Trying fallback method...');
+      
+      try {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+          console.log('✅ Fallback copy successful:', url);
+          alert('Link copied to clipboard!');
+        } else {
+          console.error('❌ Fallback copy failed');
+          alert('Failed to copy link. Please copy manually: ' + url);
+        }
+      } catch (fallbackError) {
+        console.error('❌ Fallback method also failed:', fallbackError);
+        alert('Failed to copy link. Please copy manually: ' + url);
+      }
+    }
   };
 
   const handleRevokeShare = async (shareId: string) => {

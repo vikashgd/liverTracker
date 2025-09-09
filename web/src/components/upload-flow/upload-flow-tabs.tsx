@@ -289,15 +289,7 @@ export function UploadFlowTabs({
       aria-label="Medical report upload workflow"
       tabIndex={-1}
     >
-      {/* Progress Indicator */}
-      <div className="progress-section mb-6">
-        <ProgressIndicator
-          currentStep={currentTab}
-          completedSteps={[]}
-          onStepClick={canNavigateToTab(1) ? navigateToTab : undefined}
-          canNavigateToStep={canNavigateToTab}
-        />
-      </div>
+
 
       {/* Tab Content */}
       <Tabs value={`tab-${currentTab}`} className="w-full">

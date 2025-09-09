@@ -43,6 +43,7 @@ export interface ShareLinkValidation {
 export interface ShareLinkData {
   id: string;
   token: string;
+  url: string;
   userId: string;
   shareType: ShareType;
   title: string;

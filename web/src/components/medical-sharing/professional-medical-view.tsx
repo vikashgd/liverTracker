@@ -197,7 +197,7 @@ export function ProfessionalMedicalView({
         {/* Tabbed Medical Content */}
         <div className="bg-white rounded-xl shadow-sm border border-medical-neutral-200">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 bg-medical-neutral-50 p-1 rounded-t-xl">
+            <TabsList className="grid w-full grid-cols-6 bg-medical-neutral-50 p-1 rounded-t-xl">
               <TabsTrigger value="lab-results" className="text-sm">
                 Lab Results
               </TabsTrigger>
@@ -240,7 +240,42 @@ export function ProfessionalMedicalView({
               </TabsContent>
 
               <TabsContent value="profile" className="mt-0">
-                <PatientProfileTab profile={medicalData?.patient} />
+                <PatientProfileTab profile={
+                  medicalData?.patient ? (() => {
+                    // Import privacy utilities
+                    const { createPrivacyCompliantProfile } = require('@/lib/medical-sharing/privacy-utils');
+                    
+                    // Merge demographics and profile data
+                    const rawProfile = {
+                      name: medicalData.patient.demographics?.name || medicalData.patient.name,
+                      age: medicalData.patient.demographics?.age,
+                      gender: medicalData.patient.demographics?.gender,
+                      dateOfBirth: medicalData.patient.demographics?.dateOfBirth,
+                      primaryDiagnosis: medicalData.patient.demographics?.primaryDiagnosis,
+                      diagnosisDate: medicalData.patient.demographics?.diagnosisDate,
+                      location: medicalData.patient.demographics?.location,
+                      height: medicalData.patient.profile?.height,
+                      weight: medicalData.patient.profile?.weight,
+                      onDialysis: medicalData.patient.profile?.onDialysis,
+                      dialysisSessionsPerWeek: medicalData.patient.profile?.dialysisSessionsPerWeek,
+                      dialysisStartDate: medicalData.patient.profile?.dialysisStartDate,
+                      dialysisType: medicalData.patient.profile?.dialysisType,
+                      liverDiseaseType: medicalData.patient.profile?.liverDiseaseType,
+                      transplantCandidate: medicalData.patient.profile?.transplantCandidate,
+                      transplantListDate: medicalData.patient.profile?.transplantListDate,
+                      alcoholUse: medicalData.patient.profile?.alcoholUse,
+                      smokingStatus: medicalData.patient.profile?.smokingStatus,
+                      primaryPhysician: medicalData.patient.profile?.primaryPhysician,
+                      hepatologist: medicalData.patient.profile?.hepatologist,
+                      transplantCenter: medicalData.patient.profile?.transplantCenter,
+                      ascites: medicalData.patient.profile?.ascites,
+                      encephalopathy: medicalData.patient.profile?.encephalopathy
+                    };
+                    
+                    // Apply privacy-compliant anonymization for healthcare provider sharing
+                    return createPrivacyCompliantProfile(rawProfile, 'HEALTHCARE_PROVIDER');
+                  })() : null
+                } />
               </TabsContent>
             </div>
           </Tabs>

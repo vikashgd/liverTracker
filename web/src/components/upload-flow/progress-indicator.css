@@ -5,11 +5,24 @@
 
 .progress-indicator {
   width: 100%;
-  padding: var(--space-4) var(--space-2);
-  background: var(--gradient-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--medical-neutral-200);
-  box-shadow: var(--elevation-1);
+  padding: var(--space-6) var(--space-4);
+  background: linear-gradient(145deg, white 0%, #f8fafc 100%);
+  border-radius: 20px;
+  border: 2px solid rgba(59, 130, 246, 0.1);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-indicator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.3), transparent);
 }
 
 .progress-indicator__container {
@@ -51,36 +64,39 @@
 /* === STEP CIRCLE === */
 
 .progress-step__circle {
-  width: 2.5rem; /* 40px */
-  height: 2.5rem;
+  width: 3rem; /* 48px */
+  height: 3rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: var(--font-semibold);
-  font-size: var(--text-sm);
-  transition: all var(--transition-normal);
+  font-weight: var(--font-bold);
+  font-size: var(--text-base);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 2;
   
   /* Default state */
-  background: var(--medical-neutral-100);
-  border: 2px solid var(--medical-neutral-300);
-  color: var(--medical-neutral-600);
+  background: linear-gradient(145deg, #f1f5f9 0%, #e2e8f0 100%);
+  border: 3px solid #cbd5e1;
+  color: #64748b;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 .progress-step--active .progress-step__circle {
-  background: var(--gradient-primary);
-  border-color: var(--medical-primary-600);
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-color: #1e40af;
   color: white;
-  box-shadow: var(--elevation-2);
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4), 0 4px 6px -2px rgba(59, 130, 246, 0.05);
   animation: pulse-active 2s infinite;
+  transform: scale(1.1);
 }
 
 .progress-step--completed .progress-step__circle {
-  background: var(--gradient-success);
-  border-color: var(--medical-success-600);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #047857;
   color: white;
+  box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4), 0 4px 6px -2px rgba(16, 185, 129, 0.05);
 }
 
 .progress-step__number {
@@ -160,10 +176,10 @@
 
 @keyframes pulse-active {
   0%, 100% {
-    box-shadow: var(--elevation-2);
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4), 0 4px 6px -2px rgba(59, 130, 246, 0.05);
   }
   50% {
-    box-shadow: var(--elevation-3), 0 0 0 4px rgba(59, 130, 246, 0.15);
+    box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.4), 0 10px 10px -5px rgba(59, 130, 246, 0.1), 0 0 0 8px rgba(59, 130, 246, 0.15);
   }
 }
 
