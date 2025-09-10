@@ -2,10 +2,10 @@
 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { LandingPage } from '@/components/landing/landing-page';
 
-export default function HomePage() {
+function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -31,4 +31,25 @@ export default function HomePage() {
 
   // Show landing page for unauthenticated users
   return <LandingPage />;
+}
+
+// Fallback component for any loading issues
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">LiverTracker</h1>
+        <p className="text-xl text-gray-600 mb-8">Medical Intelligence Platform</p>
+        <div className="animate-pulse bg-gray-200 h-4 w-48 mx-auto rounded"></div>
+      </div>
+    </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <HomePage />
+    </Suspense>
+  );
 }
