@@ -164,12 +164,13 @@ export async function POST(request: NextRequest) {
       const { prisma } = await import('@/lib/db');
       
       // Get all possible names for this metric
-      const metricAliases = {
+      const metricAliases: Record<string, string[]> = {
         'Sodium': ['Sodium', 'sodium', 'SODIUM', 'Na', 'Serum Sodium', 'S.Sodium'],
         'Potassium': ['Potassium', 'potassium', 'POTASSIUM', 'K', 'Serum Potassium', 'S.Potassium'],
         'ALT': ['ALT', 'alt', 'SGPT', 'sgpt', 'Alanine Aminotransferase'],
         'AST': ['AST', 'ast', 'SGOT', 'sgot', 'Aspartate Aminotransferase'],
         'ALP': ['ALP', 'alp', 'Alkaline Phosphatase', 'Alk Phos', 'ALKP'],
+        'GGT': ['GGT', 'ggt', 'Gamma-glutamyl transferase', 'Gamma GT', 'γ-GT'],
         'Bilirubin': ['Bilirubin', 'bilirubin', 'Total Bilirubin', 'T.Bilirubin'],
         'Platelets': ['Platelets', 'platelets', 'Platelet Count', 'PLT'],
         'Creatinine': ['Creatinine', 'creatinine', 'Serum Creatinine', 'S.Creatinine'],
