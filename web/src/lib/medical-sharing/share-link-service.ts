@@ -231,6 +231,7 @@ export class ShareLinkService {
       const shareLinkData: ShareLinkData = {
         id: shareLink.id,
         token: shareLink.token,
+        url: `/share/${shareLink.token}`,
         userId: shareLink.userId,
         shareType: shareLink.shareType,
         title: shareLink.title,
