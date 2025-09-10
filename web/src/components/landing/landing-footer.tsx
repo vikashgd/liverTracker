@@ -4,93 +4,49 @@ export function LandingFooter() {
   return (
     <footer className="bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid md:grid-cols-4 gap-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-8 md:space-y-0">
           {/* Brand */}
-          <div className="md:col-span-2">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">LT</span>
-              </div>
+          <div className="flex-1">
+            <div className="flex items-center space-x-3 mb-4">
+              <img 
+                src="/logo150x150.png" 
+                alt="LiverTracker Logo" 
+                className="w-10 h-10"
+              />
               <span className="text-xl font-bold">LiverTracker</span>
             </div>
-            <p className="text-gray-400 mb-6 max-w-md">
-              AI-powered liver health intelligence platform helping patients and healthcare providers 
-              make informed decisions through advanced medical data analysis.
+            <p className="text-gray-400 max-w-md">
+              AI-powered liver health intelligence for patients who get regular lab tests.
             </p>
-            <div className="flex space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-400">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span>HIPAA Compliant</span>
-              </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-400">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>SOC 2 Certified</span>
-              </div>
-            </div>
           </div>
 
-          {/* Quick Links */}
-          <div>
-            <h3 className="font-semibold mb-4">Platform</h3>
-            <ul className="space-y-2 text-gray-400">
-              <li>
-                <a href="#features" className="hover:text-white transition-colors">
-                  Features
-                </a>
-              </li>
-              <li>
-                <Link href="/auth/signup" className="hover:text-white transition-colors">
-                  Get Started
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard" className="hover:text-white transition-colors">
-                  Demo
-                </Link>
-              </li>
-              <li>
-                <a href="#contact" className="hover:text-white transition-colors">
-                  Contact
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            <h3 className="font-semibold mb-4">Support</h3>
-            <ul className="space-y-2 text-gray-400">
-              <li>
-                <a href="mailto:support@livertracker.com" className="hover:text-white transition-colors">
-                  Help Center
-                </a>
-              </li>
-              <li>
-                <a href="mailto:support@livertracker.com" className="hover:text-white transition-colors">
-                  Contact Support
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  Privacy Policy
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  Terms of Service
-                </a>
-              </li>
-            </ul>
+          {/* Essential Links */}
+          <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8">
+            <Link href="/auth/signup" className="text-gray-300 hover:text-white transition-colors font-medium">
+              Get Started
+            </Link>
+            <a href="#features" className="text-gray-300 hover:text-white transition-colors font-medium">
+              Features
+            </a>
+            <a href="#contact" className="text-gray-300 hover:text-white transition-colors font-medium">
+              Contact
+            </a>
+            <a href="#" className="text-gray-300 hover:text-white transition-colors font-medium">
+              Privacy
+            </a>
           </div>
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+        <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
-            © 2024 LiverTracker. All rights reserved.
+            © 2025 LiverTracker. HIPAA Compliant & Secure.
           </p>
-          <div className="flex items-center space-x-6 mt-4 md:mt-0">
-            <span className="text-sm text-gray-400">Made with ❤️ for better health outcomes</span>
+          <div className="flex items-center space-x-4 mt-4 md:mt-0">
+            <div className="flex items-center space-x-2 text-sm text-gray-400">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span>Medical Grade Security</span>
+            </div>
           </div>
         </div>
       </div>

@@ -12,20 +12,22 @@ export function LandingHeader() {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">LT</span>
-              </div>
+            <Link href="/" className="flex items-center space-x-3">
+              <img 
+                src="/logo150x150.png" 
+                alt="LiverTracker Logo" 
+                className="w-10 h-10"
+              />
               <span className="text-xl font-bold text-gray-900">LiverTracker</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">
+            <a href="#features" className="text-gray-700 hover:text-gray-900 transition-colors font-semibold">
               Features
             </a>
-            <a href="#contact" className="text-gray-600 hover:text-gray-900 transition-colors">
+            <a href="#contact" className="text-gray-700 hover:text-gray-900 transition-colors font-semibold">
               Contact
             </a>
           </nav>
@@ -61,10 +63,10 @@ export function LandingHeader() {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-gray-100">
             <div className="flex flex-col space-y-4">
-              <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">
+              <a href="#features" className="text-gray-700 hover:text-gray-900 transition-colors font-semibold">
                 Features
               </a>
-              <a href="#contact" className="text-gray-600 hover:text-gray-900 transition-colors">
+              <a href="#contact" className="text-gray-700 hover:text-gray-900 transition-colors font-semibold">
                 Contact
               </a>
               <div className="flex flex-col space-y-2 pt-4 border-t border-gray-100">

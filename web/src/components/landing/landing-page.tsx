@@ -6,7 +6,8 @@ import { LandingFooter } from './landing-footer';
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-white">
+    // Full viewport layout that overrides the root layout
+    <div className="fixed inset-0 bg-white overflow-y-auto z-50">
       <LandingHeader />
       <main>
         <HeroSection />
