@@ -1,24 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { authSecurityMiddleware, securityHeadersMiddleware } from "./src/middleware/auth-security";
-import { mobileAuthMiddleware } from "./src/middleware/mobile-auth-middleware";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Apply mobile auth middleware first
-  const mobileResponse = await mobileAuthMiddleware(request);
-  if (mobileResponse.status !== 200) {
-    return mobileResponse;
-  }
-
   // Apply security headers to all requests
-  let response = securityHeadersMiddleware(request);
-
-  // Apply auth security middleware to authentication endpoints
-  const authSecurityResponse = await authSecurityMiddleware(request);
-  if (authSecurityResponse) {
-    return authSecurityResponse;
+  let response = NextResponse.next();
+  
+  // Security headers
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // Only add HSTS in production with HTTPS
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
 
   // Protected routes that require authentication
@@ -55,14 +52,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
-
-  // Merge mobile headers with security headers
-  const mobileHeaders = mobileResponse.headers;
-  mobileHeaders.forEach((value, key) => {
-    if (key.startsWith('X-Mobile') || key.startsWith('X-Enable') || key.startsWith('X-Battery') || key.startsWith('X-Offline')) {
-      response.headers.set(key, value);
-    }
-  });
 
   return response;
 }
