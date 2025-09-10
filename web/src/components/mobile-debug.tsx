@@ -8,10 +8,8 @@ export function MobileDebugInfo() {
   const [isClient, setIsClient] = useState(false);
   const { data: session, status } = useSession();
 
-  // Hide debug info in production
-  if (process.env.NODE_ENV === 'production') {
-    return null;
-  }
+  // Hide debug info completely for clean production experience
+  return null;
 
   useEffect(() => {
     setIsClient(true);
