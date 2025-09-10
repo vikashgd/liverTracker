@@ -1,9 +1,51 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState, useEffect } from 'react';
 
 export function HeroSection() {
+  const headlines = [
+    "2+ Billion Affected by NAFLD Worldwide – Don't Wait for Advanced Stages",
+    "Proactive Monitoring Can Extend Life by 10+ Years", 
+    "105 Million Battle Cirrhosis, Monitoring Boosts 5-Year Survival by 30%"
+  ];
+
+  const ctaTexts = [
+    "Scan Your Report Now",
+    "Start Free Trial",
+    "Track Your Progress Today"
+  ];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsVisible(false);
+      setTimeout(() => {
+        setCurrentIndex((prevIndex) => (prevIndex + 1) % headlines.length);
+        setIsVisible(true);
+      }, 500); // Half second fade out, then change text, then fade in
+    }, 6000); // 6 seconds total
+
+    return () => clearInterval(interval);
+  }, [headlines.length]);
+
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden">
+    <>
+      <style jsx>{`
+        .fade-transition {
+          transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        .fade-in {
+          opacity: 1;
+          transform: translateY(0);
+        }
+        .fade-out {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+      `}</style>
+      <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -24,17 +66,19 @@ export function HeroSection() {
           {/* Left Column - Content */}
           <div className="space-y-8">
             <div className="space-y-4">
-              <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                AI-Powered{' '}
-                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Liver Health
-                </span>{' '}
-                Intelligence
+              <h1 className={`font-bold text-gray-900 leading-tight min-h-[200px] lg:min-h-[240px] flex items-center ${
+                currentIndex === 1 ? 'text-4xl lg:text-6xl' : 'text-3xl lg:text-5xl'
+              }`}>
+                <span 
+                  className={`fade-transition bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent ${
+                    isVisible ? 'fade-in' : 'fade-out'
+                  }`}
+                >
+                  {headlines[currentIndex]}
+                </span>
               </h1>
               <p className="text-xl text-gray-800 leading-relaxed font-medium bg-white/80 backdrop-blur-sm p-4 rounded-lg">
-                Designed for patients who get regular liver function tests. Transform your lab reports 
-                into intelligent health insights, track MELD scores over time, and easily share progress 
-                with your medical team.
+                Advanced fibrosis affects 370+ million globally. Transform your lab reports into intelligent health insights, track MELD scores over time, and share progress with your medical team.
               </p>
             </div>
 
@@ -44,7 +88,11 @@ export function HeroSection() {
                 href="/auth/signup"
                 className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl text-center font-semibold text-lg"
               >
-                Upload Your First Report
+                <span 
+                  className={`fade-transition ${isVisible ? 'fade-in' : 'fade-out'}`}
+                >
+                  {ctaTexts[currentIndex]}
+                </span>
               </Link>
               <Link
                 href="/dashboard"
@@ -78,5 +126,6 @@ export function HeroSection() {
         </div>
       </div>
     </section>
+    </>
   );
 }

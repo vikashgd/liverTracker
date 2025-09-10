@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { useState, useEffect } from 'react';
 
 export function FeaturesSection() {
   const features = [
@@ -125,42 +126,122 @@ export function FeaturesSection() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                step: '01',
-                title: 'Upload Reports',
-                description: 'Simply upload your lab reports, medical documents, or take photos of your results.',
-                icon: '📄'
-              },
-              {
-                step: '02',
-                title: 'AI Analysis',
-                description: 'Our advanced AI extracts and validates all medical data with clinical accuracy.',
-                icon: '🔬'
-              },
-              {
-                step: '03',
-                title: 'Track & Share',
-                description: 'View trends, get insights, and securely share with your healthcare providers.',
-                icon: '📈'
-              }
-            ].map((step, index) => (
-              <div key={index} className="text-center">
-                <div className="relative mb-6">
-                  <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
-                    {step.icon}
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full border-2 border-gray-200 flex items-center justify-center text-sm font-bold text-gray-600">
-                    {step.step}
-                  </div>
-                </div>
-                <h4 className="text-xl font-bold text-gray-900 mb-3">{step.title}</h4>
-                <p className="text-gray-600">{step.description}</p>
-              </div>
-            ))}
+            <HowItWorksStep 
+              step="01"
+              title="Upload Reports"
+              description="Simply upload your lab reports, medical documents, or take photos of your results."
+              icon="📄"
+              index={0}
+            />
+            <HowItWorksStep 
+              step="02"
+              title="AI Analysis"
+              description="Our advanced AI extracts and validates all medical data with clinical accuracy."
+              icon="🔬"
+              index={1}
+            />
+            <HowItWorksStep 
+              step="03"
+              title="Track & Share"
+              description="View trends, get insights, and securely share with your healthcare providers."
+              icon="📈"
+              index={2}
+            />
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+// Animated How It Works Step Component
+function HowItWorksStep({ step, title, description, icon, index }: {
+  step: string;
+  title: string;
+  description: string;
+  icon: string;
+  index: number;
+}) {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, index * 200); // Stagger animation by 200ms
+
+    return () => clearTimeout(timer);
+  }, [index]);
+
+  const getAnimation = () => {
+    switch (index) {
+      case 0: // Upload animation
+        return (
+          <div className="relative w-20 h-20 mx-auto mb-4">
+            {/* Upload animation */}
+            <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-3xl relative overflow-hidden">
+              {icon}
+              {/* Upload progress bar */}
+              <div className={`absolute bottom-2 left-2 right-2 h-1 bg-white/30 rounded-full overflow-hidden transition-all duration-2000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+                <div className={`h-full bg-white rounded-full transition-all duration-2000 ${isVisible ? 'w-full' : 'w-0'}`}></div>
+              </div>
+              {/* Floating documents */}
+              <div className={`absolute -top-1 -right-1 w-4 h-4 bg-white rounded text-xs flex items-center justify-center transition-all duration-1000 ${isVisible ? 'transform translate-y-0 opacity-100' : 'transform translate-y-2 opacity-0'}`}>
+                📄
+              </div>
+            </div>
+          </div>
+        );
+      
+      case 1: // AI Analysis animation
+        return (
+          <div className="relative w-20 h-20 mx-auto mb-4">
+            <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-3xl relative">
+              {icon}
+              {/* Scanning lines */}
+              <div className={`absolute inset-2 border-2 border-white/50 rounded-full transition-all duration-2000 ${isVisible ? 'animate-ping' : ''}`}></div>
+              <div className={`absolute inset-4 border border-white/30 rounded-full transition-all duration-1500 ${isVisible ? 'animate-pulse' : ''}`}></div>
+              {/* Data points */}
+              <div className={`absolute top-1 left-1 w-2 h-2 bg-green-400 rounded-full transition-all duration-1000 ${isVisible ? 'opacity-100 animate-pulse' : 'opacity-0'}`}></div>
+              <div className={`absolute bottom-1 right-1 w-2 h-2 bg-yellow-400 rounded-full transition-all duration-1200 ${isVisible ? 'opacity-100 animate-pulse' : 'opacity-0'}`}></div>
+            </div>
+          </div>
+        );
+      
+      case 2: // Chart animation
+        return (
+          <div className="relative w-20 h-20 mx-auto mb-4">
+            <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-3xl relative">
+              {icon}
+              {/* Chart bars */}
+              <div className="absolute inset-3 flex items-end justify-center space-x-1">
+                <div className={`w-1 bg-white/70 rounded-t transition-all duration-1000 ${isVisible ? 'h-3' : 'h-0'}`}></div>
+                <div className={`w-1 bg-white/70 rounded-t transition-all duration-1200 ${isVisible ? 'h-4' : 'h-0'}`}></div>
+                <div className={`w-1 bg-white/70 rounded-t transition-all duration-1400 ${isVisible ? 'h-2' : 'h-0'}`}></div>
+                <div className={`w-1 bg-white/70 rounded-t transition-all duration-1600 ${isVisible ? 'h-5' : 'h-0'}`}></div>
+              </div>
+            </div>
+          </div>
+        );
+      
+      default:
+        return (
+          <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+            {icon}
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className={`text-center transition-all duration-800 ${isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-4'}`}>
+      <div className="relative mb-6">
+        {getAnimation()}
+        <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full border-2 border-gray-200 flex items-center justify-center text-sm font-bold text-gray-600">
+          {step}
+        </div>
+      </div>
+      <h4 className="text-xl font-bold text-gray-900 mb-3">{title}</h4>
+      <p className="text-gray-600">{description}</p>
+    </div>
   );
 }
