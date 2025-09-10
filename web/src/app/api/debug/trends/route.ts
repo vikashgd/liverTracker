@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
     const shareConfig = {
       id: 'debug',
       token: 'debug',
+      url: '/debug/trends',
       userId,
       shareType: 'COMPLETE_PROFILE' as const,
       title: 'Debug Test',
