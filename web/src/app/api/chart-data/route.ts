@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
         'Potassium': ['Potassium', 'potassium', 'POTASSIUM', 'K', 'Serum Potassium', 'S.Potassium'],
         'ALT': ['ALT', 'alt', 'SGPT', 'sgpt', 'Alanine Aminotransferase'],
         'AST': ['AST', 'ast', 'SGOT', 'sgot', 'Aspartate Aminotransferase'],
+        'ALP': ['ALP', 'alp', 'Alkaline Phosphatase', 'Alk Phos', 'ALKP'],
         'Bilirubin': ['Bilirubin', 'bilirubin', 'Total Bilirubin', 'T.Bilirubin'],
         'Platelets': ['Platelets', 'platelets', 'Platelet Count', 'PLT'],
         'Creatinine': ['Creatinine', 'creatinine', 'Serum Creatinine', 'S.Creatinine'],
