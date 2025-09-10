@@ -22,7 +22,12 @@
     "migrate:execute": "npm run migrate -- migrate",
     "migrate:validate": "npm run migrate -- validate",
     "schema:check": "node prevent-auto-migration.js --check",
-    "schema:approve": "node prevent-auto-migration.js --approve"
+    "schema:approve": "node prevent-auto-migration.js --approve",
+    "vercel:dev": "vercel dev",
+    "vercel:build": "vercel build",
+    "vercel:deploy": "vercel --prod",
+    "vercel:env": "vercel env pull",
+    "vercel:link": "vercel link"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",
@@ -74,6 +79,7 @@
     "jsdom": "^26.1.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vercel": "^47.0.7",
     "vitest": "^3.2.4"
   }
 }
