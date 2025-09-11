@@ -1,31 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createRequire } from "module";
-import path from "path";
-import fs from "fs/promises";
 
 export const runtime = "nodejs";
 
 export async function GET(_req: NextRequest) {
   try {
-    const require = createRequire(import.meta.url);
-    const pkgPath = require.resolve("pdfjs-dist/package.json");
-    const baseDir = path.dirname(pkgPath);
-    const candidates = [
-      path.join(baseDir, "build/pdf.worker.min.mjs"),
-      path.join(baseDir, "build/pdf.worker.min.js"),
-      path.join(baseDir, "build/pdf.worker.js"),
-    ];
-    for (const p of candidates) {
-      try {
-        const text = await fs.readFile(p, { encoding: "utf-8" });
-        return new NextResponse(text, { headers: { "content-type": "application/javascript; charset=utf-8" } });
-      } catch {
-        // try next
-      }
+    // Instead of serving the worker file directly, redirect to CDN
+    // This is more reliable and avoids bundling large files
+    const cdnWorkerUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    
+    // Fetch the worker from CDN and serve it
+    const response = await fetch(cdnWorkerUrl);
+    if (!response.ok) {
+      throw new Error(`CDN fetch failed: ${response.status}`);
     }
-    return NextResponse.json({ error: "worker_not_found" }, { status: 500 });
+    
+    const workerCode = await response.text();
+    
+    return new NextResponse(workerCode, { 
+      headers: { 
+        "content-type": "application/javascript; charset=utf-8",
+        "cache-control": "public, max-age=86400" // Cache for 24 hours
+      } 
+    });
   } catch (e) {
-    return NextResponse.json({ error: "worker_error" }, { status: 500 });
+    console.error('PDF.js worker error:', e);
+    
+    // Fallback: return a minimal worker that disables worker functionality
+    const fallbackWorker = `
+      // Fallback PDF.js worker - disables worker functionality
+      self.onmessage = function(e) {
+        self.postMessage({
+          type: 'error',
+          error: 'Worker functionality disabled'
+        });
+      };
+    `;
+    
+    return new NextResponse(fallbackWorker, { 
+      headers: { 
+        "content-type": "application/javascript; charset=utf-8" 
+      } 
+    });
   }
 }
 
