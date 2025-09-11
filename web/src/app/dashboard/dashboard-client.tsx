@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { canonicalizeMetricName, metricColors, referenceRanges, type CanonicalMetric } from "@/lib/metrics";
 import type { SeriesPoint } from "@/components/trend-chart";
 import { WorldClassDashboard } from "@/components/world-class/world-class-dashboard";
 import CardGridDashboard from "@/components/card-grid-dashboard";
+import { useOnboarding } from '@/hooks/use-onboarding';
 import Link from "next/link";
 
 interface ChartSpec {
@@ -22,46 +24,57 @@ interface ChartSpec {
 
 export default function DashboardClient() {
   const { data: session, status } = useSession();
+  const router = useRouter();
+  const { state: onboardingState, loading: onboardingLoading } = useOnboarding();
   const [charts, setCharts] = useState<ChartSpec[]>([]);
   const [reportCount, setReportCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load dashboard data when session is available
+  // Check onboarding status and redirect if needed
   useEffect(() => {
-    async function loadDashboardData() {
-      if (status === 'loading') return;
-      
-      if (status === 'unauthenticated') {
-        setLoading(false);
-        return;
+    if (status === 'loading' || onboardingLoading) return;
+    
+    if (status === 'unauthenticated') {
+      setLoading(false);
+      return;
+    }
+
+    if (!session?.user?.id) {
+      setLoading(false);
+      return;
+    }
+
+    // If user needs onboarding, redirect to onboarding page
+    if (onboardingState?.needsOnboarding) {
+      console.log('🚀 Redirecting to onboarding for new user');
+      router.push('/onboarding');
+      return;
+    }
+
+    // If onboarding is complete, load dashboard data
+    if (onboardingState && !onboardingState.needsOnboarding) {
+      loadDashboardData();
+    }
+  }, [status, onboardingState, onboardingLoading, session?.user?.id, router]);
+
+  // Load dashboard data when session is available
+  async function loadDashboardData() {
+    if (!session?.user?.id) return;
+
+    try {
+      console.log('🏠 Loading dashboard data for user:', session.user.id);
+      setLoading(true);
+      setError(null);
+
+      // Check report count
+      const reportResponse = await fetch('/api/reports');
+      if (!reportResponse.ok) {
+        throw new Error('Failed to fetch reports');
       }
-
-      if (!session?.user?.id) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        console.log('🏠 Loading dashboard data for user:', session.user.id);
-        setLoading(true);
-        setError(null);
-
-        // Check report count
-        const reportResponse = await fetch('/api/reports');
-        if (!reportResponse.ok) {
-          throw new Error('Failed to fetch reports');
-        }
-        const reports = await reportResponse.json();
-        const count = reports.length || 0;
-        setReportCount(count);
-
-        // If no reports, show onboarding
-        if (count === 0) {
-          setCharts([]);
-          setLoading(false);
-          return;
-        }
+      const reports = await reportResponse.json();
+      const count = reports.length || 0;
+      setReportCount(count);
 
         // Load chart data for all metrics
         const allMetrics: CanonicalMetric[] = [
@@ -113,16 +126,17 @@ export default function DashboardClient() {
         console.error('Dashboard loading error:', error);
         setError(error instanceof Error ? error.message : 'Failed to load dashboard');
         setCharts([]);
-      } finally {
-        setLoading(false);
-      }
+    } catch (error) {
+      console.error('Dashboard loading error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load dashboard');
+      setCharts([]);
+    } finally {
+      setLoading(false);
     }
-
-    loadDashboardData();
-  }, [session, status]);
+  }
 
   // Show loading state
-  if (loading || status === 'loading') {
+  if (loading || status === 'loading' || onboardingLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
@@ -177,101 +191,8 @@ export default function DashboardClient() {
     );
   }
 
-  // Show onboarding for new users
-  if (reportCount === 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="max-w-4xl mx-auto px-4 py-12">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-6">
-              <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome to LiverTracker!</h1>
-            <p className="text-xl text-gray-600 mb-8">
-              Let's get you started with your health intelligence dashboard
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 mb-12">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-              <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Upload Your First Report</h2>
-                <p className="text-gray-600 mb-6">
-                  Upload a lab report to start tracking your health metrics and get AI-powered insights.
-                </p>
-              </div>
-              <Link
-                href="/upload-enhanced"
-                className="block w-full bg-green-600 text-white text-center px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
-              >
-                Upload Report
-              </Link>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-              <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Complete Your Profile</h2>
-                <p className="text-gray-600 mb-6">
-                  Set up your profile for personalized health insights and accurate calculations.
-                </p>
-              </div>
-              <Link
-                href="/profile"
-                className="block w-full bg-blue-600 text-white text-center px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-              >
-                Set Up Profile
-              </Link>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">What you can do with LiverTracker:</h3>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-10 h-10 bg-purple-100 rounded-full mb-3">
-                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <h4 className="font-medium text-gray-900 mb-1">Track Trends</h4>
-                <p className="text-sm text-gray-600">Monitor your health metrics over time</p>
-              </div>
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-10 h-10 bg-indigo-100 rounded-full mb-3">
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h4 className="font-medium text-gray-900 mb-1">AI Insights</h4>
-                <p className="text-sm text-gray-600">Get intelligent health recommendations</p>
-              </div>
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-10 h-10 bg-green-100 rounded-full mb-3">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h4 className="font-medium text-gray-900 mb-1">Medical Scoring</h4>
-                <p className="text-sm text-gray-600">Calculate MELD, Child-Pugh scores</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // If onboarding is needed, the useEffect will redirect
+  // This component should only render for users who have completed onboarding
 
   // Show normal dashboard for users with data
   return (
