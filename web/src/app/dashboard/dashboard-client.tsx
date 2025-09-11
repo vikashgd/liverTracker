@@ -122,10 +122,6 @@ export default function DashboardClient() {
         setCharts(chartSpecs);
         console.log(`✅ Loaded data for ${chartSpecs.length} metrics`);
 
-      } catch (error) {
-        console.error('Dashboard loading error:', error);
-        setError(error instanceof Error ? error.message : 'Failed to load dashboard');
-        setCharts([]);
     } catch (error) {
       console.error('Dashboard loading error:', error);
       setError(error instanceof Error ? error.message : 'Failed to load dashboard');
