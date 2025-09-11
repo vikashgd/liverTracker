@@ -6,7 +6,7 @@ export async function GET(_req: NextRequest) {
   try {
     // Instead of serving the worker file directly, redirect to CDN
     // This is more reliable and avoids bundling large files
-    const cdnWorkerUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const cdnWorkerUrl = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.54/pdf.worker.min.mjs";
     
     // Fetch the worker from CDN and serve it
     const response = await fetch(cdnWorkerUrl);
