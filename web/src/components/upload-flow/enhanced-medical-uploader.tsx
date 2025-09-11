@@ -33,7 +33,9 @@ async function extractFromImages(imageUrls: string[]) {
 
 async function convertPdfToImages(file: File): Promise<string[]> {
   const pdfjs = await import("pdfjs-dist");
-  const pdfjsWorkerSrc = `/api/pdfjs/worker?v=${pdfjs.version}`;
+  // Force fresh worker load with timestamp to avoid caching issues
+  const timestamp = Date.now();
+  const pdfjsWorkerSrc = `/api/pdfjs/worker?v=${pdfjs.version}&t=${timestamp}`;
   pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorkerSrc;
   
   const arrayBuffer = await file.arrayBuffer();
