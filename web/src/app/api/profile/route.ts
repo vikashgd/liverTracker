@@ -1,35 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUserId, getCurrentUserFromDb } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-config';
 import { PrismaClient } from '@/generated/prisma';
 import { markProfileCompleted } from '@/lib/onboarding-utils';
 
-const prisma = new PrismaClient();
+// Create a fresh Prisma client for each request to prevent connection sharing
+function createFreshPrismaClient() {
+  return new PrismaClient({
+    log: ['error'],
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  });
+}
 
 export async function GET(request: NextRequest) {
+  const prisma = createFreshPrismaClient();
+  
   try {
     console.log('🔍 Profile GET request received');
-    const userId = await getCurrentUserId();
     
-    if (!userId) {
-      console.log('❌ No authenticated user found');
+    // Get session directly to avoid any caching issues
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.id) {
+      console.log('❌ No authenticated session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user and their profile using enhanced auth utilities
-    const user = await getCurrentUserFromDb();
+    const userId = session.user.id;
+    console.log('🔐 Authenticated user ID:', userId);
+    console.log('📧 User email:', session.user.email);
+
+    // Get user from database with explicit user ID
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        emailVerified: true,
+        createdAt: true
+      }
+    });
     
     if (!user) {
-      console.log('❌ User not found in database');
+      console.log('❌ User not found in database for ID:', userId);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get profile data
+    console.log('👤 Database user found:', user.email, 'ID:', user.id);
+
+    // Get profile data with explicit user ID check
     const profile = await prisma.patientProfile.findUnique({
-      where: { userId: user.id }
+      where: { userId: userId }
     });
 
-    console.log('👤 Found user:', user.id);
-    console.log('📊 User profile:', profile);
+    console.log('📊 Profile data for user', user.email, ':', profile ? 'Found' : 'Not found');
+    
+    if (profile) {
+      console.log('📋 Profile details - Gender:', profile.gender, 'DOB:', profile.dateOfBirth);
+    }
 
     const response = { 
       profile: profile ? {
@@ -43,30 +77,54 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    console.log('✅ Returning profile data:', response);
+    console.log('✅ Returning profile data for:', user.email);
     return NextResponse.json(response);
 
   } catch (error) {
     console.error('❌ Profile GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
 export async function POST(request: NextRequest) {
+  const prisma = createFreshPrismaClient();
+  
   try {
-    const userId = await getCurrentUserId();
+    console.log('📝 Profile POST request received');
     
-    if (!userId) {
+    // Get session directly to avoid any caching issues
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.id) {
+      console.log('❌ No authenticated session found for POST');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const profileData = await request.json();
+    const userId = session.user.id;
+    console.log('🔐 Authenticated user ID for POST:', userId);
+    console.log('📧 User email for POST:', session.user.email);
 
-    // Verify user exists
-    const user = await getCurrentUserFromDb();
+    const profileData = await request.json();
+    console.log('📋 Received profile data for user:', session.user.email);
+
+    // Verify user exists in database
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true
+      }
+    });
+    
     if (!user) {
+      console.log('❌ User not found in database for POST, ID:', userId);
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+
+    console.log('👤 Verified user for POST:', user.email, 'ID:', user.id);
 
     // Extract name field for User model, rest for PatientProfile
     const { name, ...patientProfileData } = profileData;
@@ -77,6 +135,7 @@ export async function POST(request: NextRequest) {
         where: { id: userId },
         data: { name: name || null }
       });
+      console.log('📝 Updated user name for:', user.email);
     }
 
     // Convert string dates to Date objects
@@ -91,7 +150,9 @@ export async function POST(request: NextRequest) {
     // Check if this completes the profile (has essential fields)
     const isProfileComplete = patientProfileData.dateOfBirth && patientProfileData.gender;
     
-    // Upsert profile (create or update)
+    console.log('💾 Saving profile for user:', user.email, 'Complete:', isProfileComplete);
+    
+    // Upsert profile (create or update) with explicit user ID
     const profile = await prisma.patientProfile.upsert({
       where: { userId: userId },
       update: {
@@ -109,20 +170,31 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    console.log('✅ Profile saved for user:', user.email, 'Gender:', profile.gender);
+
     // Mark onboarding profile step as completed if profile is complete
     if (isProfileComplete) {
       await markProfileCompleted(userId);
+      console.log('🎯 Onboarding marked complete for:', user.email);
     }
 
     return NextResponse.json({ 
       success: true, 
       profile,
       message: 'Profile saved successfully',
-      onboardingUpdated: isProfileComplete
+      onboardingUpdated: isProfileComplete,
+      debug: {
+        userId: userId,
+        userEmail: user.email,
+        profileGender: profile.gender,
+        profileDOB: profile.dateOfBirth
+      }
     });
 
   } catch (error) {
-    console.error('Profile POST error:', error);
+    console.error('❌ Profile POST error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }
