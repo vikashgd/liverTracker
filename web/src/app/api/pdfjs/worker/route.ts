@@ -19,7 +19,9 @@ export async function GET(_req: NextRequest) {
     return new NextResponse(workerCode, { 
       headers: { 
         "content-type": "application/javascript; charset=utf-8",
-        "cache-control": "public, max-age=86400" // Cache for 24 hours
+        "cache-control": "no-cache, no-store, must-revalidate", // Prevent caching
+        "pragma": "no-cache",
+        "expires": "0"
       } 
     });
   } catch (e) {
@@ -38,7 +40,10 @@ export async function GET(_req: NextRequest) {
     
     return new NextResponse(fallbackWorker, { 
       headers: { 
-        "content-type": "application/javascript; charset=utf-8" 
+        "content-type": "application/javascript; charset=utf-8",
+        "cache-control": "no-cache, no-store, must-revalidate",
+        "pragma": "no-cache",
+        "expires": "0"
       } 
     });
   }
