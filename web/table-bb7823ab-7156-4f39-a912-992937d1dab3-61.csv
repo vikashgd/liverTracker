@@ -1,0 +1,9 @@
+﻿Feature,LiverTracker,Apple Health / Google Fit,MyChart (Epic),PatientsLikeMe,General Health Apps
+Liver-Specific Biomarkers,"✅ Deep focus (MELD, INR, Platelets, etc.)","❌ Generic (glucose, weight, steps)",⚠️ Only if your hospital tracks them,"❌ Forum-based, no tracking",❌ No liver focus
+Longitudinal Trending (5–10 yrs),✅ Built for long-term tracking,❌ Limited to device-synced data,⚠️ Limited to data from that hospital system,❌ No structured tracking,❌ Short-term focus
+Auto MELD/Child-Pugh Calc,"✅ Automatic, real-time",❌ Not available,"⚠️ Sometimes, but not patient-facing",❌ No,❌ No
+Upload Any Lab Report (Global),✅ AI extracts from any format,❌ Manual entry only,❌ Only data from that EHR,❌ Manual entry,❌ Manual or device only
+Doctor Sharing (PDF Summary),"✅ One-click, clean report",❌ No,✅ But only within that hospital,❌ No,❌ No
+Multi-Language Support,✅ Launching with 6+ languages,⚠️ Limited,❌ Usually English only,⚠️ Some,❌ Rarely
+Offline Mode,✅ Planned for 2026,❌ Requires internet,❌ Web-based,❌ App requires internet,❌ Most require internet
+Designed for Non-Tech Patients,"✅ Simple, guided, visual",⚠️ Complex for older users,⚠️ Cluttered UI,⚠️ Forum-heavy,⚠️ Fitness-focused
