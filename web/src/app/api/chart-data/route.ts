@@ -4,8 +4,7 @@ import { getMedicalPlatform } from '@/lib/medical-platform';
 import { canonicalizeMetricName, type CanonicalMetric } from '@/lib/metrics';
 import { formatMedicalValue } from '@/lib/medical-display-formatter';
 
-export async function POST(request: NextRequest) {
-  let metricName = '';
+async function getChartData(metricName: string) {
   let canonicalMetric: CanonicalMetric | undefined;
   
   try {
@@ -35,9 +34,6 @@ export async function POST(request: NextRequest) {
         throw authError;
       }
     }
-    
-    const requestData = await request.json();
-    metricName = requestData.metricName;
 
     if (!metricName) {
       return NextResponse.json(
@@ -334,4 +330,34 @@ export async function POST(request: NextRequest) {
       }
     });
   }
+}
+
+// GET handler for query parameter requests
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const metricName = searchParams.get('metric');
+
+  if (!metricName) {
+    return NextResponse.json(
+      { error: 'Metric parameter is required' },
+      { status: 400 }
+    );
+  }
+
+  return getChartData(metricName);
+}
+
+// POST handler for JSON body requests
+export async function POST(request: NextRequest) {
+  const requestData = await request.json();
+  const metricName = requestData.metricName;
+
+  if (!metricName) {
+    return NextResponse.json(
+      { error: 'Metric name is required' },
+      { status: 400 }
+    );
+  }
+
+  return getChartData(metricName);
 }
