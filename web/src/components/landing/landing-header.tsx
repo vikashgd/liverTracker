@@ -27,6 +27,9 @@ export function LandingHeader() {
             <a href="#features" className="text-gray-700 hover:text-gray-900 transition-colors font-semibold">
               Features
             </a>
+            <a href="#why-us" className="text-gray-700 hover:text-gray-900 transition-colors font-semibold">
+              Why Us
+            </a>
             <a href="#contact" className="text-gray-700 hover:text-gray-900 transition-colors font-semibold">
               Contact
             </a>
@@ -65,6 +68,9 @@ export function LandingHeader() {
             <div className="flex flex-col space-y-4">
               <a href="#features" className="text-gray-700 hover:text-gray-900 transition-colors font-semibold">
                 Features
+              </a>
+              <a href="#why-us" className="text-gray-700 hover:text-gray-900 transition-colors font-semibold">
+                Why Us
               </a>
               <a href="#contact" className="text-gray-700 hover:text-gray-900 transition-colors font-semibold">
                 Contact
