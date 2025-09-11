@@ -39,15 +39,26 @@ export function EnhancedMedicalHeader() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
 
+  // Client-side only state to prevent hydration mismatch
+  const [isClient, setIsClient] = useState(false);
+
+  // Set client-side flag after hydration
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Debug logging to see what's happening with session
   useEffect(() => {
-    console.log('🔍 Enhanced Header Debug:', { 
-      status, 
-      hasSession: !!session, 
-      userEmail: session?.user?.email,
-      userName: session?.user?.name 
-    });
-  }, [status, session]);
+    if (isClient) {
+      console.log('🔍 Enhanced Header Debug:', { 
+        status, 
+        hasSession: !!session, 
+        userEmail: session?.user?.email,
+        userName: session?.user?.name,
+        isClient 
+      });
+    }
+  }, [status, session, isClient]);
 
   // Enhanced logout handler with proper state management
   const handleLogout = useCallback(async () => {
@@ -164,9 +175,10 @@ export function EnhancedMedicalHeader() {
     return false;
   };
 
-  // Enhanced user display with proper loading states
+  // Enhanced user display with proper loading states and hydration safety
   const renderUserSection = () => {
-    if (status === 'loading') {
+    // Prevent hydration mismatch by showing loading state until client-side
+    if (!isClient || status === 'loading') {
       return (
         <div className="flex items-center space-x-2 px-4 py-2 text-slate-500">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-400"></div>
@@ -304,8 +316,8 @@ export function EnhancedMedicalHeader() {
             </Link>
           </div>
 
-          {/* Desktop Navigation - Only show if authenticated */}
-          {status === 'authenticated' && (
+          {/* Desktop Navigation - Only show if authenticated and client-side */}
+          {isClient && status === 'authenticated' && (
             <nav className="hidden lg:flex items-center space-x-1">
               {navigationGroups.map((group) => {
                 const IconComponent = group.icon;
@@ -377,8 +389,8 @@ export function EnhancedMedicalHeader() {
           <div className="flex items-center space-x-3">
             <OfflineStatusBadge />
             
-            {/* Notifications - Only show if authenticated */}
-            {status === 'authenticated' && (
+            {/* Notifications - Only show if authenticated and client-side */}
+            {isClient && status === 'authenticated' && (
               <button className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
@@ -388,8 +400,8 @@ export function EnhancedMedicalHeader() {
             {/* User section with enhanced state management */}
             {renderUserSection()}
 
-            {/* Mobile menu button - Only show if authenticated */}
-            {status === 'authenticated' && (
+            {/* Mobile menu button - Only show if authenticated and client-side */}
+            {isClient && status === 'authenticated' && (
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="lg:hidden p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
@@ -405,8 +417,8 @@ export function EnhancedMedicalHeader() {
           </div>
         </div>
 
-        {/* Mobile Navigation - Only show if authenticated */}
-        {status === 'authenticated' && isMobileMenuOpen && (
+        {/* Mobile Navigation - Only show if authenticated and client-side */}
+        {isClient && status === 'authenticated' && isMobileMenuOpen && (
           <div className="lg:hidden border-t border-slate-200/60 bg-white/95 backdrop-blur-md">
             <div className="px-4 py-6 space-y-1">
               <div className="mb-4">

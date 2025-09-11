@@ -8,6 +8,8 @@ import { MobileDebugInfo } from "@/components/mobile-debug";
 import { PWAServiceWorker } from "@/components/pwa-service-worker";
 import { OfflineIndicator } from "@/components/offline-indicator";
 import { PerformanceMonitor } from "@/components/performance-monitor";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-config";
 import "@/lib/warmup"; // Auto-warmup database
 
 const inter = Inter({
@@ -45,11 +47,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Get session on server-side to prevent hydration mismatch
+  const session = await getServerSession(authOptions);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -78,7 +83,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className={`${inter.variable} font-sans antialiased min-h-screen bg-medical-neutral-50`} suppressHydrationWarning>
-        <Providers>
+        <Providers session={session}>
           <div className="min-h-screen flex flex-col">
             <EnhancedMedicalHeader />
             <main className="flex-1">
