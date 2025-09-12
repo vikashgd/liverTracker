@@ -1,6 +1,8 @@
 import { PatientProfileForm } from "@/components/patient-profile-form";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, getCurrentUser } from "@/lib/auth";
+import { getCurrentUserProfile } from "@/lib/profile-service";
 import { Suspense } from "react";
+import { ProfileSessionInfo } from "@/components/profile-session-info";
 
 function ProfileLoading() {
   return (
@@ -14,11 +16,23 @@ function ProfileLoading() {
 }
 
 export default async function ProfilePage() {
+  // Ensure user is authenticated
   await requireAuth();
+  
+  // Get current user and profile data
+  const currentUser = await getCurrentUser();
+  const userProfile = await getCurrentUserProfile();
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Session and Profile Info */}
+        <ProfileSessionInfo 
+          user={currentUser} 
+          profileData={userProfile} 
+        />
+        
+        {/* Profile Form */}
         <Suspense fallback={<ProfileLoading />}>
           <PatientProfileForm />
         </Suspense>
