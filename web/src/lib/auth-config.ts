@@ -3,7 +3,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/db";
-import { verifyPassword } from "@/lib/password-utils";
 import { AUTH_ERRORS } from "@/types/auth";
 
 export const authOptions: NextAuthOptions = {
@@ -93,19 +92,59 @@ export const authOptions: NextAuthOptions = {
     }
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       console.log('🔐 SignIn callback:', { 
         provider: account?.provider, 
         email: user?.email 
       });
 
-      // Simplified OAuth handling - just allow sign-in
-      if (account?.provider === "google") {
+      // Handle Google OAuth account linking
+      if (account?.provider === "google" && user?.email) {
         try {
           console.log('✅ Google OAuth sign-in for:', user.email);
+          
+          // Check if user already exists with this email
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email.toLowerCase() }
+          });
+
+          if (existingUser) {
+            console.log('🔗 Linking Google account to existing user:', user.email);
+            
+            // Check if Google account is already linked
+            const existingAccount = await prisma.account.findFirst({
+              where: {
+                userId: existingUser.id,
+                provider: "google"
+              }
+            });
+
+            if (!existingAccount && account) {
+              // Link the Google account to existing user
+              await prisma.account.create({
+                data: {
+                  userId: existingUser.id,
+                  type: account.type,
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                  access_token: account.access_token,
+                  expires_at: account.expires_at,
+                  token_type: account.token_type,
+                  scope: account.scope,
+                  id_token: account.id_token,
+                  refresh_token: account.refresh_token
+                }
+              });
+              console.log('✅ Successfully linked Google account');
+            }
+            
+            // Update user object to use existing user ID
+            user.id = existingUser.id;
+          }
+          
           return true;
         } catch (error) {
-          console.error('❌ Google OAuth error:', error);
+          console.error('❌ Google OAuth linking error:', error);
           // Still allow sign-in to avoid blocking users
           return true;
         }
