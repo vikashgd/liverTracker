@@ -75,13 +75,30 @@ export function PatientProfileForm() {
 
   const loadProfile = async () => {
     try {
-      console.log('🔍 Loading profile data...');
+      console.log('🔍 Loading profile data for user:', session?.user?.email);
+      
+      // Validate user session before making API call
+      if (!session?.user?.email) {
+        console.log('❌ No user session found, cannot load profile');
+        setError('User session not found');
+        return;
+      }
+      
       const response = await fetch('/api/profile');
       console.log('📡 Profile API response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
         console.log('📊 Profile API response data:', data);
+        
+        // Validate that the returned data belongs to the current user
+        if (data.user && data.user.email !== session.user.email) {
+          console.error('🚨 SECURITY ALERT: Profile data mismatch!');
+          console.error('Expected user:', session.user.email);
+          console.error('Received user:', data.user.email);
+          setError('Profile data security error - please refresh and try again');
+          return;
+        }
         
         if (data.profile) {
           // Convert ISO datetime strings to YYYY-MM-DD format for HTML date inputs
@@ -101,10 +118,10 @@ export function PatientProfileForm() {
             convertedProfile.dialysisStartDate = new Date(convertedProfile.dialysisStartDate).toISOString().split('T')[0];
           }
           
-          console.log('✅ Setting profile data with converted dates:', convertedProfile);
+          console.log('✅ Setting profile data for user:', session.user.email, 'with converted dates');
           setProfile(convertedProfile);
         } else {
-          console.log('⚠️ No profile data found in response');
+          console.log('⚠️ No profile data found for user:', session.user.email);
         }
       } else {
         console.error('❌ Profile API error:', response.status, response.statusText);
@@ -120,10 +137,19 @@ export function PatientProfileForm() {
     debounce(async (profileData: PatientProfile) => {
       if (!hasChanges) return;
       
+      // Validate user session before saving
+      if (!session?.user?.email) {
+        console.log('❌ No user session found, cannot save profile');
+        setError('User session not found - please refresh and try again');
+        return;
+      }
+      
       setSaving(true);
       setError(null);
       
       try {
+        console.log('💾 Saving profile for user:', session.user.email);
+        
         const response = await fetch('/api/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -134,15 +160,28 @@ export function PatientProfileForm() {
           throw new Error('Failed to save profile');
         }
 
+        const result = await response.json();
+        
+        // Validate that the saved data belongs to the current user
+        if (result.debug && result.debug.userEmail !== session.user.email) {
+          console.error('🚨 SECURITY ALERT: Save response user mismatch!');
+          console.error('Expected user:', session.user.email);
+          console.error('Response user:', result.debug.userEmail);
+          setError('Profile save security error - please refresh and try again');
+          return;
+        }
+
+        console.log('✅ Profile saved successfully for user:', session.user.email);
         setLastSaved(new Date());
         setHasChanges(false);
       } catch (err) {
+        console.error('❌ Profile save error for user:', session.user.email, err);
         setError(err instanceof Error ? err.message : 'Failed to save profile');
       } finally {
         setSaving(false);
       }
     }, 1500),
-    [hasChanges]
+    [hasChanges, session?.user?.email]
   );
 
   const updateProfile = (updates: Partial<PatientProfile>) => {

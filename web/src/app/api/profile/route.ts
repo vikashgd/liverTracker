@@ -74,10 +74,17 @@ export async function GET(request: NextRequest) {
         id: user.id,
         name: user.name,
         email: user.email
+      },
+      debug: {
+        userId: user.id,
+        userEmail: user.email,
+        sessionUserId: userId,
+        timestamp: new Date().toISOString(),
+        hasProfile: !!profile
       }
     };
 
-    console.log('✅ Returning profile data for:', user.email);
+    console.log('✅ Returning profile data for:', user.email, 'Session ID:', userId);
     return NextResponse.json(response);
 
   } catch (error) {
