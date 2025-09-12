@@ -189,14 +189,14 @@ export function useProfileForScoring() {
     age: profile.dateOfBirth 
       ? Math.floor((Date.now() - new Date(profile.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
       : undefined,
-    gender: profile.gender,
-    weight: profile.weight,
-    height: profile.height,
+    gender: profile.gender || undefined,
+    weight: profile.weight || undefined,
+    height: profile.height || undefined,
     onDialysis: profile.onDialysis,
-    dialysisSessionsPerWeek: profile.dialysisSessionsPerWeek,
+    dialysisSessionsPerWeek: profile.dialysisSessionsPerWeek || undefined,
     ascites: profile.ascites || 'none',
     encephalopathy: profile.encephalopathy || 'none',
-    liverDiseaseType: profile.liverDiseaseType,
+    liverDiseaseType: profile.liverDiseaseType || undefined,
     preferredUnits: profile.preferredUnits || 'US',
   } : null;
 
