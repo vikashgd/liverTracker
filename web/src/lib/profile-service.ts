@@ -126,14 +126,14 @@ export async function getProfileForMedicalScoring(): Promise<{
   profile: ProfileData | null;
   medicalData: {
     age?: number;
-    gender?: string;
-    weight?: number;
-    height?: number;
+    gender?: string | null;
+    weight?: number | null;
+    height?: number | null;
     onDialysis: boolean;
-    dialysisSessionsPerWeek?: number;
-    ascites?: string;
-    encephalopathy?: string;
-    liverDiseaseType?: string;
+    dialysisSessionsPerWeek?: number | null;
+    ascites?: string | null;
+    encephalopathy?: string | null;
+    liverDiseaseType?: string | null;
     preferredUnits: string;
   };
 } | null> {
