@@ -27,7 +27,16 @@ export async function GET(request: NextRequest) {
     
     if (!session?.user?.id) {
       console.log('❌ No authenticated session found');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Unauthorized' }, 
+        { 
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        }
+      );
     }
 
     const userId = session.user.id;
@@ -85,7 +94,15 @@ export async function GET(request: NextRequest) {
     };
 
     console.log('✅ Returning profile data for:', user.email, 'Session ID:', userId);
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store',
+        'X-User-ID': userId // For debugging
+      }
+    });
 
   } catch (error) {
     console.error('❌ Profile GET error:', error);
@@ -195,6 +212,14 @@ export async function POST(request: NextRequest) {
         userEmail: user.email,
         profileGender: profile.gender,
         profileDOB: profile.dateOfBirth
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store',
+        'X-User-ID': userId
       }
     });
 
