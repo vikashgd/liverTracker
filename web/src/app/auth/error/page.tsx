@@ -89,14 +89,38 @@ function AuthErrorContent() {
           </Link>
         </div>
 
-        {error === 'AccessDenied' && (
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-            <h3 className="text-sm font-medium text-yellow-800">Troubleshooting Tips:</h3>
-            <ul className="mt-2 text-sm text-yellow-700 list-disc list-inside space-y-1">
-              <li>Make sure your Google OAuth app is published or your email is added to test users</li>
-              <li>Check that the redirect URI is correctly configured in Google Cloud Console</li>
-              <li>Verify you're using the correct Google account</li>
-            </ul>
+        {(error === 'AccessDenied' || error === 'Callback' || error === 'OAuthCallback') && (
+          <div className="mt-6 space-y-4">
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+              <h3 className="text-sm font-medium text-yellow-800">Google OAuth Issue</h3>
+              <p className="mt-2 text-sm text-yellow-700">
+                Your Google account exists but OAuth is not configured for public access.
+              </p>
+            </div>
+            
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <h3 className="text-sm font-medium text-blue-800">Quick Solution:</h3>
+              <p className="mt-2 text-sm text-blue-700">
+                Use email/password login instead:
+              </p>
+              <div className="mt-3">
+                <Link
+                  href="/auth/signin"
+                  className="inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm leading-4 font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Try Email/Password Login
+                </Link>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-md">
+              <h3 className="text-sm font-medium text-gray-800">For Developers:</h3>
+              <ul className="mt-2 text-sm text-gray-600 list-disc list-inside space-y-1">
+                <li>Add your email to Google OAuth test users</li>
+                <li>Or publish the OAuth app for public access</li>
+                <li>Check Google Cloud Console > APIs & Services > OAuth consent screen</li>
+              </ul>
+            </div>
           </div>
         )}
       </div>
