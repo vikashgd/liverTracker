@@ -475,8 +475,19 @@ async function updateOnboardingForNewReport(userId: string) {
 
 export async function GET() {
   try {
+    // Get current user ID from session - CRITICAL for data isolation
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      console.log('❌ Reports GET: No authenticated user found');
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log('📊 Reports GET: Fetching reports for user:', userId);
+
+    // Fetch reports ONLY for the authenticated user
     const reports = await safeQuery(() => 
       prisma.reportFile.findMany({
+        where: { userId }, // ✅ CRITICAL: Filter by current user
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
@@ -488,9 +499,11 @@ export async function GET() {
         },
       })
     );
+
+    console.log(`✅ Reports GET: Returning ${reports.length} reports for user ${userId}`);
     return NextResponse.json(reports);
   } catch (error) {
-    console.error("Failed to fetch reports:", error);
+    console.error("❌ Reports GET: Failed to fetch reports:", error);
     return NextResponse.json(
       { 
         error: "Failed to fetch reports", 
