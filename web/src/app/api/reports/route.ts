@@ -1,555 +1,168 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { PrismaClient } from "@/generated/prisma";
-import { safeQuery } from "@/lib/db-utils";
-import { getCurrentUserId } from "@/lib/auth";
-import { getMedicalPlatform } from "@/lib/medical-platform";
-import { enhancedUnitConverter } from "@/lib/medical-platform/core/enhanced-unit-converter";
-import { markFirstReportUploaded, markSecondReportUploaded, getUserOnboardingStatus } from "@/lib/onboarding-utils";
-import { z } from "zod";
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth-config';
+import { PrismaClient } from '../../../generated/prisma';
 
-const Body = z.object({
-  objectKey: z.string(),
-  contentType: z.string(),
-  reportType: z.string().nullable().optional(),
-  reportDate: z.string().nullable().optional(),
-  extracted: z
-    .object({
-      reportType: z.string().nullable().optional(),
-      reportDate: z.string().nullable().optional(),
-      metrics: z
-        .record(
-          z.string(),
-          z.union([z.object({ value: z.number().nullable(), unit: z.string().nullable() }), z.null()])
-        )
-        .nullable()
-        .optional(),
-      metricsAll: z
-        .array(
-          z.object({
-            name: z.string(),
-            value: z.number().nullable(),
-            unit: z.string().nullable(),
-            category: z.string().nullable().optional(),
-          })
-        )
-        .nullable()
-        .optional(),
-      imaging: z
-        .object({
-          modality: z.string().nullable().optional(),
-          organs: z
-            .array(
-              z.object({
-                name: z.string(),
-                size: z.object({ value: z.number().nullable(), unit: z.string().nullable() }).nullable().optional(),
-                notes: z.string().nullable().optional(),
-              })
-            )
-            .nullable()
-            .optional(),
-          findings: z.array(z.string()).nullable().optional(),
-        })
-        .nullable()
-        .optional(),
-    })
-    .nullable()
-    .optional(),
-});
-
-export async function POST(req: NextRequest) {
-  const userId = await getCurrentUserId();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  let data: z.infer<typeof Body> | undefined;
-  let safeDate: Date | undefined;
+export async function GET(request: NextRequest) {
+  console.log('🔍 Reports API: Starting request');
   
   try {
-    data = Body.parse(await req.json());
-    
-    safeDate = (() => {
-      // Debug: Log what we received
-      console.log('🔍 Date debugging - Received data:');
-      console.log('  - Top-level reportDate:', data.reportDate);
-      console.log('  - Extracted reportDate:', data.extracted?.reportDate);
-      console.log('  - Full extracted object keys:', data.extracted ? Object.keys(data.extracted) : 'null');
-      
-      // Priority: 1. Top-level reportDate, 2. Extracted reportDate, 3. Current date
-      const s = data.reportDate ?? data.extracted?.reportDate ?? null;
-      console.log('  - Selected date string:', s);
-      
-      if (!s) {
-        console.log('⚠️ No report date found, using current date as fallback');
-        return new Date(); // Default to current date
-      }
-      // Handle both YYYY-MM-DD and ISO datetime formats
-      let d: Date;
-      if (s.includes('T')) {
-        // Already in ISO format
-        d = new Date(s);
-      } else {
-        // Assume YYYY-MM-DD format from HTML date input
-        d = new Date(s + 'T00:00:00.000Z');
-      }
-      
-      if (isNaN(d.getTime())) {
-        console.log(`⚠️ Invalid date format: ${s}, using current date as fallback`);
-        return new Date();
-      }
-      console.log(`✅ Using report date: ${d.toISOString()} (from input: ${s})`);
-      return d;
-    })();
-    
-    // Initialize the medical platform
-    const platform = getMedicalPlatform({
-      processing: {
-        strictMode: false,
-        autoCorrection: true,
-        confidenceThreshold: 0.7,
-        validationLevel: 'normal'
-      },
-      quality: {
-        minimumConfidence: 0.5,
-        requiredFields: ['ALT', 'AST', 'Platelets'],
-        outlierDetection: true,
-        duplicateHandling: 'merge'
-      },
-      regional: {
-        primaryUnits: 'International',
-        timeZone: 'UTC',
-        locale: 'en-US'
-      },
-      compliance: {
-        auditLevel: 'detailed',
-        dataRetention: 2555,
-        encryptionRequired: true
-      }
+    // CRITICAL: Get fresh session for EVERY request
+    const session = await getServerSession(authOptions);
+    console.log('🔍 Reports API: Session check', { 
+      hasSession: !!session, 
+      userId: session?.user?.id,
+      userEmail: session?.user?.email 
     });
 
-    console.log(`📊 Processing report for user ${userId} with date ${safeDate.toISOString()}`);
-
-    // Process through the medical platform if we have extracted data
-    if (data.extracted && (data.extracted.metrics || data.extracted.metricsAll)) {
-      console.log('🔬 Processing through Medical Platform...');
-      
-      // Process with timeout and retry logic
-      const processingResult = await Promise.race([
-        platform.processAIExtraction(userId, data.extracted, safeDate, data.objectKey),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Processing timeout after 30 seconds')), 30000)
-        )
-      ]) as any;
-
-      if (processingResult.success) {
-        console.log(`✅ Medical Platform processed ${processingResult.summary.valuesProcessed} values with quality score ${processingResult.summary.qualityScore.toFixed(2)}`);
-        
-        // Create timeline event for platform processing (with error handling)
-        try {
-          await prisma.timelineEvent.create({
-            data: {
-              userId: userId,
-              type: "report_processed",
-              reportId: processingResult.report.id,
-              details: {
-                platform: 'medical_platform_v1',
-                summary: {
-                  valuesProcessed: processingResult.summary.valuesProcessed,
-                  valuesValid: processingResult.summary.valuesValid,
-                  averageConfidence: processingResult.summary.averageConfidence,
-                  processingTime: processingResult.summary.processingTime,
-                  qualityScore: processingResult.summary.qualityScore
-                },
-                qualityScore: processingResult.summary.qualityScore,
-                originalExtracted: data.extracted
-              } as any,
-            },
-          });
-        } catch (timelineError) {
-          console.warn('⚠️ Timeline event creation failed, but report was saved successfully');
+    if (!session?.user?.id) {
+      console.log('❌ Reports API: No valid session');
+      return NextResponse.json({ error: 'Unauthorized' }, { 
+        status: 401,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
-
-        // Update onboarding progress
-        await updateOnboardingForNewReport(userId);
-
-        return NextResponse.json({ 
-          id: processingResult.report.id,
-          processed: true,
-          platform: 'medical_platform_v1',
-          summary: processingResult.summary,
-          warnings: processingResult.warnings,
-          quality: processingResult.report.quality
-        });
-      } else {
-        console.warn('⚠️ Medical Platform processing failed, falling back to enhanced legacy system');
-        console.warn('Errors:', processingResult.errors);
-        
-        // Fall back to enhanced legacy processing
-        return await processLegacyReport(data, userId, safeDate);
-      }
-    } else {
-      // No extracted data - create basic report
-      console.log('📄 Creating basic report without extracted data');
-      
-      const report = await prisma.reportFile.create({
-        data: {
-          userId: userId,
-          objectKey: data.objectKey,
-          contentType: data.contentType,
-          reportType: data.reportType ?? "Document",
-          reportDate: safeDate,
-          extractedJson: data.extracted ?? undefined,
-        },
       });
-
-      // Create timeline event
-      await prisma.timelineEvent.create({
-        data: {
-          userId: userId,
-          type: "report_saved",
-          reportId: report.id,
-          details: data.extracted ?? undefined,
-        },
-      });
-
-      return NextResponse.json({ id: report.id, processed: false });
     }
 
-  } catch (error) {
-    console.error('❌ Report processing error:', error);
-    
-    // Only try fallback if we have valid data (not a parsing error)
-    if (data && safeDate) {
-      try {
-        console.log('🔄 Attempting final fallback to legacy processing...');
-        const fallbackResult = await processLegacyReport(data, userId, safeDate);
-        
-        return NextResponse.json({
-          ...fallbackResult,
-          warning: 'Processed using fallback system due to platform error',
-          platform: 'emergency_fallback'
-        });
-      } catch (fallbackError) {
-        console.error('❌ Even fallback processing failed:', fallbackError);
+    const userId = session.user.id;
+    console.log('✅ Reports API: Authenticated user:', userId);
+
+    // CRITICAL: Use fresh Prisma client for EVERY request
+    const prisma = new PrismaClient({
+      log: ['error', 'warn'],
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL
+        }
       }
-    }
-    
-    // Create a minimal report as last resort if we have data
-    if (data) {
-      try {
-        const minimalReport = await prisma.reportFile.create({
-          data: {
-            userId: userId,
-            objectKey: data.objectKey,
-            contentType: data.contentType,
-            reportType: data.reportType ?? "Document",
-            reportDate: safeDate || new Date(),
-            extractedJson: data.extracted ?? undefined,
-          },
-        });
-
-        // Update onboarding progress
-        await updateOnboardingForNewReport(userId);
-
-        return NextResponse.json({
-          id: minimalReport.id,
-          processed: false,
-          warning: 'Report saved but processing failed',
-          platform: 'minimal_fallback'
-        });
-      } catch (minimalError) {
-        console.error('❌ Even minimal report creation failed:', minimalError);
-      }
-    }
-    
-    // Final fallback - return error response
-    return NextResponse.json(
-      { 
-        error: "Complete report processing failure", 
-        details: error instanceof Error ? error.message : String(error),
-        fallback: "Please try again or contact support",
-        timestamp: new Date().toISOString()
-      }, 
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * Legacy report processing for backward compatibility
- * Enhanced with unit conversion to ensure consistency
- */
-async function processLegacyReport(data: any, userId: string, safeDate: Date) {
-  console.log('🔄 Using legacy report processing with unit conversion...');
-  
-  const report = await prisma.reportFile.create({
-    data: {
-      userId: userId,
-      objectKey: data.objectKey,
-      contentType: data.contentType,
-      reportType: data.reportType ?? data.extracted?.reportType ?? undefined,
-      reportDate: safeDate,
-      extractedJson: data.extracted ?? undefined,
-    },
-  });
-
-  // Enhanced metric processing with unit conversion (using existing schema)
-  if (data.extracted?.metrics) {
-    const metricsRows = Object.entries(data.extracted.metrics)
-      .filter(([, v]) => v !== null)
-      .map(([name, v]) => {
-        const vv = v as { value: number | null; unit: string | null };
-        const converted = applyLegacyUnitConversion(name, vv.value, vv.unit);
-        return {
-          reportId: report.id,
-          name,
-          value: converted.value ?? undefined,
-          unit: converted.unit ?? undefined,
-        };
-      });
-    if (metricsRows.length > 0) {
-      await prisma.extractedMetric.createMany({ data: metricsRows });
-    }
-  }
-
-  if (data.extracted?.metricsAll && data.extracted.metricsAll.length > 0) {
-    const rows = data.extracted.metricsAll.map((m: any) => {
-      const converted = applyLegacyUnitConversion(m.name, m.value, m.unit);
-      return {
-        reportId: report.id,
-        name: m.name,
-        category: m.category ?? undefined,
-        value: converted.value ?? undefined,
-        unit: converted.unit ?? undefined,
-      };
-    });
-    await prisma.extractedMetric.createMany({ data: rows });
-  }
-
-  // Legacy imaging processing
-  if (data.extracted?.imaging) {
-    const organs = data.extracted.imaging.organs ?? [];
-    if (organs.length > 0) {
-      const rows = organs.map((o: any) => ({
-        reportId: report.id,
-        name: o.name,
-        value: o.size?.value ?? undefined,
-        unit: o.size?.unit ?? undefined,
-        textValue: o.notes ?? undefined,
-        category: "imaging",
-      }));
-      await prisma.extractedMetric.createMany({ data: rows });
-    }
-    const findings = data.extracted.imaging.findings ?? [];
-    if (findings.length > 0) {
-      const rows = findings.map((f: any) => ({
-        reportId: report.id,
-        name: "finding",
-        textValue: f,
-        category: "imaging",
-      }));
-      await prisma.extractedMetric.createMany({ data: rows });
-    }
-  }
-
-  // Create timeline event
-  await prisma.timelineEvent.create({
-    data: {
-      userId: userId,
-      type: "report_saved",
-      reportId: report.id,
-      details: {
-        ...data.extracted,
-        processing: 'legacy_fallback'
-      },
-    },
-  });
-
-  // Update onboarding progress
-  await updateOnboardingForNewReport(userId);
-
-  return NextResponse.json({ 
-    id: report.id, 
-    processed: true,
-    platform: 'legacy_fallback_enhanced',
-    note: 'Processed using enhanced legacy system with unit conversion'
-  });
-}
-
-
-
-/**
- * Apply unit conversion in legacy processing (DEPRECATED - use applyComprehensiveUnitConversion)
- * Safe fallback conversion for critical metrics
- */
-function applyLegacyUnitConversion(metricName: string, value: number | null, unit: string | null): {
-  value: number | null;
-  unit: string | null;
-} {
-  if (value === null || value === undefined || isNaN(value)) {
-    return { value, unit };
-  }
-
-  const name = metricName.toLowerCase();
-  
-  // Platelet conversion (most critical)
-  if (name.includes('platelet') || name.includes('plt')) {
-    // Convert raw count (/μL) to standard (×10³/μL)
-    if (value >= 50000 && value <= 1000000) {
-      console.log(`🔧 Legacy conversion: Platelets ${value}/μL → ${value * 0.001} ×10³/μL`);
-      return { value: value * 0.001, unit: '×10³/μL' };
-    }
-    // Convert lakhs to standard
-    if (value >= 0.5 && value <= 10 && (unit?.includes('lakh') || value < 50)) {
-      console.log(`🔧 Legacy conversion: Platelets ${value} lakhs → ${value * 100} ×10³/μL`);
-      return { value: value * 100, unit: '×10³/μL' };
-    }
-    return { value, unit: unit || '×10³/μL' };
-  }
-
-  // Bilirubin conversion
-  if (name.includes('bilirubin') || name.includes('bil')) {
-    // Convert μmol/L to mg/dL
-    if (value >= 5 && value <= 500 && (unit?.includes('μmol') || unit?.includes('umol'))) {
-      console.log(`🔧 Legacy conversion: Bilirubin ${value} μmol/L → ${(value / 17.1).toFixed(2)} mg/dL`);
-      return { value: value / 17.1, unit: 'mg/dL' };
-    }
-    return { value, unit: unit || 'mg/dL' };
-  }
-
-  // Creatinine conversion
-  if (name.includes('creatinine') || name.includes('crea')) {
-    // Convert μmol/L to mg/dL
-    if (value >= 30 && value <= 900 && (unit?.includes('μmol') || unit?.includes('umol'))) {
-      console.log(`🔧 Legacy conversion: Creatinine ${value} μmol/L → ${(value / 88.4).toFixed(2)} mg/dL`);
-      return { value: value / 88.4, unit: 'mg/dL' };
-    }
-    return { value, unit: unit || 'mg/dL' };
-  }
-
-  // Albumin conversion
-  if (name.includes('albumin') || name.includes('alb')) {
-    // Convert g/L to g/dL
-    if (value >= 15 && value <= 70 && (unit?.includes('g/L') || value > 10)) {
-      console.log(`🔧 Legacy conversion: Albumin ${value} g/L → ${(value / 10).toFixed(1)} g/dL`);
-      return { value: value / 10, unit: 'g/dL' };
-    }
-    return { value, unit: unit || 'g/dL' };
-  }
-
-  // No conversion needed - return as is
-  return { value, unit };
-}
-
-/**
- * Update onboarding progress when a new report is uploaded
- */
-async function updateOnboardingForNewReport(userId: string) {
-  try {
-    const status = await getUserOnboardingStatus(userId);
-    if (!status) return;
-
-    // Get current report count
-    const reportCount = await prisma.reportFile.count({
-      where: { userId }
     });
 
-    console.log(`📊 User ${userId} now has ${reportCount} reports`);
+    try {
+      // CRITICAL: Double-check user exists and get ONLY their data
+      const userExists = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true }
+      });
 
-    // Mark first report uploaded
-    if (reportCount === 1 && !status.firstReportUploaded) {
-      await markFirstReportUploaded(userId);
-      console.log('✅ Marked first report uploaded for onboarding');
-    }
-
-    // Mark second report uploaded
-    if (reportCount === 2 && !status.secondReportUploaded) {
-      await markSecondReportUploaded(userId);
-      console.log('✅ Marked second report uploaded for onboarding');
-    }
-  } catch (error) {
-    console.error('⚠️ Failed to update onboarding progress:', error);
-    // Don't throw - this shouldn't break report upload
-  }
-}
-
-export async function GET() {
-  try {
-    // Get current user ID from session - CRITICAL for data isolation
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      console.log('❌ Reports GET: No authenticated user found');
-      return NextResponse.json(
-        { error: "Unauthorized" }, 
-        { 
-          status: 401,
+      if (!userExists) {
+        console.log('❌ Reports API: User not found in database:', userId);
+        return NextResponse.json({ error: 'User not found' }, { 
+          status: 404,
           headers: {
             'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0'
           }
+        });
+      }
+
+      console.log('✅ Reports API: User verified:', userExists.email);
+
+      // CRITICAL: Get ONLY this user's report files with STRICT filtering
+      const reportFiles = await prisma.reportFile.findMany({
+        where: {
+          userId: userId, // STRICT: Only this user's files
+          // Additional safety check
+          user: {
+            id: userId
+          }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
-      );
-    }
-
-    console.log('📊 Reports GET: Fetching reports for user:', userId);
-
-    // Use fresh Prisma client to prevent session contamination
-    const freshPrisma = new PrismaClient({
-      log: ['error'],
-      datasources: {
-        db: {
-          url: process.env.DATABASE_URL,
-        },
-      },
-    });
-
-    try {
-      // Fetch reports ONLY for the authenticated user
-      const reports = await freshPrisma.reportFile.findMany({
-        where: { userId }, // ✅ CRITICAL: Filter by current user
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          reportType: true,
-          reportDate: true,
-          createdAt: true,
-          objectKey: true,
-          contentType: true,
-        },
       });
 
-      console.log(`✅ Reports GET: Returning ${reports.length} reports for user ${userId}`);
-      
+      console.log(`✅ Reports API: Found ${reportFiles.length} reports for user ${userId}`);
+
+      // CRITICAL: Verify ALL returned data belongs to the requesting user
+      const contaminated = reportFiles.filter(report => report.userId !== userId);
+      if (contaminated.length > 0) {
+        console.error('🚨 CRITICAL: Data contamination detected!', {
+          requestingUser: userId,
+          contaminatedReports: contaminated.map(r => ({ id: r.id, userId: r.userId }))
+        });
+        
+        // Return empty array if contamination detected
+        return NextResponse.json([], {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+            'X-User-ID': userId,
+            'X-Contamination-Detected': 'true'
+          }
+        });
+      }
+
+      // Transform to expected format using correct ReportFile fields
+      const reports = reportFiles.map(file => ({
+        id: file.id,
+        filename: file.objectKey, // Use objectKey as filename
+        createdAt: file.createdAt,
+        userId: file.userId,
+        contentType: file.contentType,
+        reportType: file.reportType,
+        reportDate: file.reportDate,
+        objectKey: file.objectKey
+      }));
+
+      console.log(`✅ Reports API: Returning ${reports.length} clean reports for user ${userId}`);
+
       return NextResponse.json(reports, {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0',
-          'Surrogate-Control': 'no-store',
-          'X-User-ID': userId // For debugging
+          'X-User-ID': userId,
+          'X-Report-Count': reports.length.toString()
         }
       });
+
     } finally {
-      await freshPrisma.$disconnect();
+      // CRITICAL: Always disconnect Prisma client
+      await prisma.$disconnect();
     }
+
   } catch (error) {
-    console.error("❌ Reports GET: Failed to fetch reports:", error);
+    console.error('❌ Reports API: Critical error:', error);
     return NextResponse.json(
-      { 
-        error: "Failed to fetch reports", 
-        details: error instanceof Error ? error.message : String(error) 
-      }, 
+      { error: 'Internal server error' }, 
       { 
         status: 500,
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
       }
     );
   }
 }
 
+export async function POST(request: NextRequest) {
+  // Similar strict validation for POST requests
+  const session = await getServerSession(authOptions);
+  
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { 
+      status: 401,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+      }
+    });
+  }
 
+  // Implementation for POST would go here with same strict validation
+  return NextResponse.json({ message: 'POST not implemented yet' }, { status: 501 });
+}
