@@ -8,7 +8,7 @@ import { AUTH_ERRORS } from "@/types/auth";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   // Add timeout configurations
-  debug: false, // Disable debug in production
+  debug: true, // Enable debug to troubleshoot credentials issue
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -17,8 +17,14 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
+        console.log('🔐 Credentials authorize called with:', { 
+          email: credentials?.email, 
+          hasPassword: !!credentials?.password 
+        });
+
         if (!credentials?.email || !credentials?.password) {
-          throw new Error(AUTH_ERRORS.INVALID_CREDENTIALS);
+          console.log('❌ Missing credentials');
+          return null; // Return null instead of throwing error
         }
 
         try {
@@ -27,13 +33,19 @@ export const authOptions: NextAuthOptions = {
             where: { email: credentials.email.toLowerCase() }
           });
 
+          console.log('🔍 User lookup result:', { 
+            found: !!user, 
+            email: credentials.email.toLowerCase() 
+          });
+
           if (!user) {
-            throw new Error(AUTH_ERRORS.INVALID_CREDENTIALS);
+            console.log('❌ User not found');
+            return null; // Return null instead of throwing error
           }
 
           // For now, we'll allow any password since we're working with existing production data
           // In a real implementation, you'd verify against a hashed password
-          console.log('Login attempt for existing user:', credentials.email.toLowerCase());
+          console.log('✅ Login successful for existing user:', credentials.email.toLowerCase());
 
           return {
             id: user.id,
@@ -42,8 +54,8 @@ export const authOptions: NextAuthOptions = {
             image: user.image || undefined
           };
         } catch (error) {
-          console.error('Authentication error:', error);
-          throw error;
+          console.error('❌ Authentication error:', error);
+          return null; // Return null instead of throwing error
         }
       }
     }),
