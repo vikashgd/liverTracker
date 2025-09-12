@@ -51,32 +51,6 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      // Manually specify endpoints to avoid discovery timeout
-      authorization: {
-        url: "https://accounts.google.com/o/oauth2/v2/auth",
-        params: {
-          scope: "openid email profile",
-          prompt: "select_account",
-        },
-      },
-      token: "https://oauth2.googleapis.com/token",
-      userinfo: "https://openidconnect.googleapis.com/v1/userinfo",
-      issuer: "https://accounts.google.com",
-      jwks_endpoint: "https://www.googleapis.com/oauth2/v3/certs",
-      httpOptions: {
-        timeout: 30000, // Increased to 30 seconds timeout
-      },
-      // Add additional configuration for better reliability
-      wellKnown: "https://accounts.google.com/.well-known/openid-configuration",
-      checks: ["pkce", "state"],
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-        };
-      },
     })
   ],
   pages: {
