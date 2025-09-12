@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useSessionDebug, SessionDebugComponent } from '@/lib/session-debug';
 import { useRouter } from 'next/navigation';
 import { canonicalizeMetricName, metricColors, referenceRanges, type CanonicalMetric } from "@/lib/metrics";
 import type { SeriesPoint } from "@/components/trend-chart";
@@ -23,7 +24,7 @@ interface ChartSpec {
 }
 
 export default function DashboardClient() {
-  const { data: session, status } = useSession();
+  const { session, status } = useSessionDebug();
   const router = useRouter();
   const { state: onboardingState, loading: onboardingLoading } = useOnboarding();
   const [charts, setCharts] = useState<ChartSpec[]>([]);
@@ -134,56 +135,65 @@ export default function DashboardClient() {
   // Show loading state
   if (loading || status === 'loading' || onboardingLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <>
+        <SessionDebugComponent />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading Dashboard</h2>
+            <p className="text-gray-600">Preparing your health analytics...</p>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading Dashboard</h2>
-          <p className="text-gray-600">Preparing your health analytics...</p>
         </div>
-      </div>
+      </>
     );
   }
 
   // Show error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+      <>
+        <SessionDebugComponent />
+        <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Dashboard Error</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Dashboard Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Retry
-          </button>
         </div>
-      </div>
+      </>
     );
   }
 
   // Show unauthenticated state
   if (status === 'unauthenticated') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Sign In</h2>
-          <p className="text-gray-600 mb-6">You need to be signed in to view your dashboard.</p>
-          <Link 
-            href="/auth/signin" 
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Sign In
-          </Link>
+      <>
+        <SessionDebugComponent />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Sign In</h2>
+            <p className="text-gray-600 mb-6">You need to be signed in to view your dashboard.</p>
+            <Link 
+              href="/auth/signin" 
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Sign In
+            </Link>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -192,42 +202,45 @@ export default function DashboardClient() {
 
   // Show normal dashboard for users with data
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* World-Class Dashboard */}
-      <WorldClassDashboard charts={charts} />
+    <>
+      <SessionDebugComponent />
+      <div className="min-h-screen bg-gray-50">
+        {/* World-Class Dashboard */}
+        <WorldClassDashboard charts={charts} />
 
-      {/* Dashboard sections */}
-      <div className="bg-white border-t border-gray-200 py-8">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">
-            📊 Your Health Analytics Dashboard
-          </h2>
-          <p className="text-gray-500">
-            {charts.some(c => c.data.length > 0) 
-              ? "Analyzing your health data and trends"
-              : "Upload reports to see personalized health insights and trends"
-            }
-          </p>
-        </div>
-      </div>
-
-      {/* Interactive Chart Analysis */}
-      <div className="bg-white border-t border-gray-200" data-section="trends">
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              📈 Health Metrics Overview
+        {/* Dashboard sections */}
+        <div className="bg-white border-t border-gray-200 py-8">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <h2 className="text-xl font-semibold text-gray-700 mb-4">
+              📊 Your Health Analytics Dashboard
             </h2>
-            <p className="text-base text-gray-600">
-              {charts.some(c => c.data.length > 0)
-                ? "Click any metric card for detailed analysis and trends"
-                : "Your health metrics will appear here once you upload medical reports"
+            <p className="text-gray-500">
+              {charts.some(c => c.data.length > 0) 
+                ? "Analyzing your health data and trends"
+                : "Upload reports to see personalized health insights and trends"
               }
             </p>
           </div>
-          <CardGridDashboard charts={charts} />
+        </div>
+
+        {/* Interactive Chart Analysis */}
+        <div className="bg-white border-t border-gray-200" data-section="trends">
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                📈 Health Metrics Overview
+              </h2>
+              <p className="text-base text-gray-600">
+                {charts.some(c => c.data.length > 0)
+                  ? "Click any metric card for detailed analysis and trends"
+                  : "Your health metrics will appear here once you upload medical reports"
+                }
+              </p>
+            </div>
+            <CardGridDashboard charts={charts} />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -1,4 +1,24 @@
-import { NextAuthOptions } from "next-auth";
+#!/usr/bin/env node
+
+/**
+ * Fix Email Authentication Session Issue
+ * 
+ * Problem: Email auth redirects to dashboard but session not recognized
+ * Solution: Fix session callback and JWT handling for credentials provider
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+function fixEmailAuthSession() {
+  console.log('🔧 FIXING EMAIL AUTHENTICATION SESSION ISSUE');
+  console.log('='.repeat(60));
+
+  // 1. Fix auth configuration - session and JWT callbacks
+  console.log('\n1. 📝 FIXING AUTH CONFIGURATION');
+  
+  const authConfigPath = path.join(__dirname, 'src/lib/auth-config.ts');
+  const authConfigContent = `import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
@@ -242,14 +262,181 @@ export const authOptions: NextAuthOptions = {
       
       // Always redirect to dashboard after successful sign in
       if (url.startsWith("/") || url.startsWith(baseUrl)) {
-        const redirectUrl = `${baseUrl}/dashboard`;
+        const redirectUrl = \`\${baseUrl}/dashboard\`;
         console.log('✅ Redirecting to:', redirectUrl);
         return redirectUrl;
       }
       
-      const defaultUrl = `${baseUrl}/dashboard`;
+      const defaultUrl = \`\${baseUrl}/dashboard\`;
       console.log('✅ Default redirect to:', defaultUrl);
       return defaultUrl;
     },
   },
-};
+};`;
+
+  fs.writeFileSync(authConfigPath, authConfigContent);
+  console.log('✅ Updated auth configuration with proper session handling');
+
+  // 2. Create session debugging utility
+  console.log('\n2. 🔍 CREATING SESSION DEBUG UTILITY');
+  
+  const sessionDebugPath = path.join(__dirname, 'src/lib/session-debug.ts');
+  const sessionDebugContent = `"use client";
+
+import { useSession } from 'next-auth/react';
+import { useEffect } from 'react';
+
+export function useSessionDebug() {
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    console.log('🔍 Session Debug:', {
+      status,
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userId: (session?.user as any)?.id,
+      userEmail: session?.user?.email,
+      userName: session?.user?.name,
+      sessionObject: session
+    });
+  }, [session, status]);
+
+  return { session, status };
+}
+
+export function SessionDebugComponent() {
+  const { session, status } = useSessionDebug();
+
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 bg-black/80 text-white p-3 rounded-lg text-xs max-w-sm z-50">
+      <div className="font-bold mb-2">Session Debug</div>
+      <div>Status: {status}</div>
+      <div>Has Session: {!!session ? 'Yes' : 'No'}</div>
+      <div>User ID: {(session?.user as any)?.id || 'None'}</div>
+      <div>Email: {session?.user?.email || 'None'}</div>
+    </div>
+  );
+}`;
+
+  fs.writeFileSync(sessionDebugPath, sessionDebugContent);
+  console.log('✅ Created session debug utility');
+
+  // 3. Update dashboard to use session debugging
+  console.log('\n3. 🏠 UPDATING DASHBOARD WITH SESSION DEBUG');
+  
+  const dashboardPath = path.join(__dirname, 'src/app/dashboard/dashboard-client.tsx');
+  let dashboardContent = fs.readFileSync(dashboardPath, 'utf8');
+
+  // Add session debug import
+  if (!dashboardContent.includes('useSessionDebug')) {
+    dashboardContent = dashboardContent.replace(
+      'import { useSession } from \'next-auth/react\';',
+      `import { useSession } from 'next-auth/react';
+import { useSessionDebug, SessionDebugComponent } from '@/lib/session-debug';`
+    );
+
+    // Replace useSession with useSessionDebug
+    dashboardContent = dashboardContent.replace(
+      'const { data: session, status } = useSession();',
+      'const { session, status } = useSessionDebug();'
+    );
+
+    // Add debug component to render
+    dashboardContent = dashboardContent.replace(
+      'return (',
+      `return (
+    <>
+      <SessionDebugComponent />`
+    );
+
+    // Close the fragment
+    dashboardContent = dashboardContent.replace(
+      /(\s+<\/div>\s*);(\s*)$/,
+      '$1</>\n  );$2'
+    );
+
+    fs.writeFileSync(dashboardPath, dashboardContent);
+    console.log('✅ Updated dashboard with session debugging');
+  }
+
+  // 4. Create test script for email authentication
+  console.log('\n4. 🧪 CREATING EMAIL AUTH TEST SCRIPT');
+  
+  const testScriptPath = path.join(__dirname, 'test-email-auth-fix.js');
+  const testScriptContent = `#!/usr/bin/env node
+
+/**
+ * Test Email Authentication Fix
+ */
+
+const { PrismaClient } = require('./src/generated/prisma');
+
+async function testEmailAuthFix() {
+  console.log('🧪 TESTING EMAIL AUTHENTICATION FIX');
+  console.log('='.repeat(50));
+
+  const prisma = new PrismaClient();
+
+  try {
+    // Check for existing users
+    const users = await prisma.user.findMany({
+      take: 5,
+      include: {
+        accounts: true,
+        sessions: true
+      }
+    });
+
+    console.log(\`Found \${users.length} users in database:\`);
+    users.forEach((user, index) => {
+      console.log(\`\${index + 1}. \${user.email} (ID: \${user.id})\`);
+      console.log(\`   Accounts: \${user.accounts.length}\`);
+      console.log(\`   Sessions: \${user.sessions.length}\`);
+      console.log('');
+    });
+
+    console.log('\\n📋 TESTING STEPS:');
+    console.log('1. Go to https://livertracker.com/auth/signin');
+    console.log('2. Use email authentication with existing user email');
+    console.log('3. Check browser console for session debug logs');
+    console.log('4. Verify dashboard shows authenticated state');
+    console.log('5. Check header shows user menu instead of sign-in button');
+
+    console.log('\\n🔍 WHAT TO LOOK FOR:');
+    console.log('✅ Session debug shows status: "authenticated"');
+    console.log('✅ Session debug shows valid user ID');
+    console.log('✅ Dashboard loads without showing sign-in button');
+    console.log('✅ Header shows user dropdown menu');
+
+  } catch (error) {
+    console.error('❌ Test error:', error);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+testEmailAuthFix().catch(console.error);`;
+
+  fs.writeFileSync(testScriptPath, testScriptContent);
+  console.log('✅ Created email auth test script');
+
+  console.log('\n🎯 EMAIL AUTHENTICATION SESSION FIX COMPLETE');
+  console.log('='.repeat(60));
+  console.log('✅ Fixed auth configuration callbacks');
+  console.log('✅ Added session debugging utilities');
+  console.log('✅ Updated dashboard with debug info');
+  console.log('✅ Created test script');
+  
+  console.log('\n📋 NEXT STEPS:');
+  console.log('1. Build and deploy the changes');
+  console.log('2. Test email authentication');
+  console.log('3. Check browser console for session debug logs');
+  console.log('4. Verify dashboard authentication state');
+}
+
+// Run the fix
+fixEmailAuthSession();
