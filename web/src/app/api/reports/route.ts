@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { PrismaClient } from "@/generated/prisma";
 import { safeQuery } from "@/lib/db-utils";
 import { getCurrentUserId } from "@/lib/auth";
 import { getMedicalPlatform } from "@/lib/medical-platform";
