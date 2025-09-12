@@ -118,7 +118,7 @@ function AuthErrorContent() {
               <ul className="mt-2 text-sm text-gray-600 list-disc list-inside space-y-1">
                 <li>Add your email to Google OAuth test users</li>
                 <li>Or publish the OAuth app for public access</li>
-                <li>Check Google Cloud Console > APIs & Services > OAuth consent screen</li>
+                <li>Check Google Cloud Console &gt; APIs &amp; Services &gt; OAuth consent screen</li>
               </ul>
             </div>
           </div>
