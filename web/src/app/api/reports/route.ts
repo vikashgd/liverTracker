@@ -479,14 +479,34 @@ export async function GET() {
     const userId = await getCurrentUserId();
     if (!userId) {
       console.log('❌ Reports GET: No authenticated user found');
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" }, 
+        { 
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        }
+      );
     }
 
     console.log('📊 Reports GET: Fetching reports for user:', userId);
 
-    // Fetch reports ONLY for the authenticated user
-    const reports = await safeQuery(() => 
-      prisma.reportFile.findMany({
+    // Use fresh Prisma client to prevent session contamination
+    const freshPrisma = new PrismaClient({
+      log: ['error'],
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
+    });
+
+    try {
+      // Fetch reports ONLY for the authenticated user
+      const reports = await freshPrisma.reportFile.findMany({
         where: { userId }, // ✅ CRITICAL: Filter by current user
         orderBy: { createdAt: "desc" },
         select: {
@@ -497,11 +517,22 @@ export async function GET() {
           objectKey: true,
           contentType: true,
         },
-      })
-    );
+      });
 
-    console.log(`✅ Reports GET: Returning ${reports.length} reports for user ${userId}`);
-    return NextResponse.json(reports);
+      console.log(`✅ Reports GET: Returning ${reports.length} reports for user ${userId}`);
+      
+      return NextResponse.json(reports, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'Surrogate-Control': 'no-store',
+          'X-User-ID': userId // For debugging
+        }
+      });
+    } finally {
+      await freshPrisma.$disconnect();
+    }
   } catch (error) {
     console.error("❌ Reports GET: Failed to fetch reports:", error);
     return NextResponse.json(
@@ -509,7 +540,13 @@ export async function GET() {
         error: "Failed to fetch reports", 
         details: error instanceof Error ? error.message : String(error) 
       }, 
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      }
     );
   }
 }
