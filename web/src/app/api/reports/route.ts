@@ -151,18 +151,135 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // Similar strict validation for POST requests
-  const session = await getServerSession(authOptions);
+  console.log('📤 Reports API POST: Starting request');
   
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { 
-      status: 401,
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+  try {
+    // CRITICAL: Get fresh session for EVERY request
+    const session = await getServerSession(authOptions);
+    console.log('📤 Reports API POST: Session check', { 
+      hasSession: !!session, 
+      userId: session?.user?.id,
+      userEmail: session?.user?.email 
+    });
+
+    if (!session?.user?.id) {
+      console.log('❌ Reports API POST: No valid session');
+      return NextResponse.json({ error: 'Unauthorized' }, { 
+        status: 401,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+    }
+
+    const userId = session.user.id;
+    console.log('✅ Reports API POST: Authenticated user:', userId);
+
+    // Parse request body
+    const body = await request.json();
+    const { objectKey, contentType, reportDate, extracted } = body;
+
+    console.log('📤 Reports API POST: Request data', {
+      objectKey,
+      contentType,
+      hasReportDate: !!reportDate,
+      hasExtracted: !!extracted
+    });
+
+    if (!objectKey) {
+      return NextResponse.json({ error: 'Missing objectKey' }, { status: 400 });
+    }
+
+    // CRITICAL: Use fresh Prisma client for EVERY request
+    const prisma = new PrismaClient({
+      log: ['error', 'warn'],
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL
+        }
       }
     });
-  }
 
-  // Implementation for POST would go here with same strict validation
-  return NextResponse.json({ message: 'POST not implemented yet' }, { status: 501 });
+    try {
+      // CRITICAL: Double-check user exists
+      const userExists = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true }
+      });
+
+      if (!userExists) {
+        console.log('❌ Reports API POST: User not found in database:', userId);
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      console.log('✅ Reports API POST: User verified:', userExists.email);
+
+      // Create report file record
+      const reportFile = await prisma.reportFile.create({
+        data: {
+          userId: userId,
+          objectKey: objectKey,
+          contentType: contentType || 'application/octet-stream',
+          reportDate: reportDate ? new Date(reportDate) : null,
+          reportType: extracted?.reportType || null
+        }
+      });
+
+      console.log('✅ Reports API POST: Created report file:', reportFile.id);
+
+      // If extracted data exists, save metrics
+      if (extracted && extracted.metricsAll && Array.isArray(extracted.metricsAll)) {
+        const metrics = extracted.metricsAll.map((metric: any) => ({
+          reportFileId: reportFile.id,
+          name: metric.name || 'unknown',
+          value: metric.value?.toString() || '',
+          unit: metric.unit || '',
+          category: metric.category || 'general',
+          createdAt: new Date()
+        }));
+
+        if (metrics.length > 0) {
+          await prisma.extractedMetric.createMany({
+            data: metrics
+          });
+          console.log(`✅ Reports API POST: Created ${metrics.length} metrics`);
+        }
+      }
+
+      console.log('✅ Reports API POST: Successfully created report');
+
+      return NextResponse.json({ 
+        id: reportFile.id,
+        objectKey: reportFile.objectKey,
+        success: true 
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+          'X-User-ID': userId
+        }
+      });
+
+    } finally {
+      // CRITICAL: Always disconnect Prisma client
+      await prisma.$disconnect();
+    }
+
+  } catch (error) {
+    console.error('❌ Reports API POST: Critical error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' }, 
+      { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
+    );
+  }
 }
