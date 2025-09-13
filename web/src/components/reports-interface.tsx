@@ -126,19 +126,43 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
         setChartLoading(true);
         setChartError(null);
         
-        const response = await fetch('/api/chart-data', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+        // Common lab metrics to fetch
+        const metrics = ['platelets', 'alt', 'ast', 'bilirubin', 'albumin', 'creatinine', 'sodium', 'potassium'];
+        
+        // Fetch data for each metric
+        const chartPromises = metrics.map(async (metric) => {
+          try {
+            const response = await fetch(`/api/chart-data?metric=${metric}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (!response.ok) {
+              console.warn(`Failed to load ${metric}:`, response.status);
+              return { metric, data: [] };
+            }
+
+            const data = await response.json();
+            return { metric, data: data.data || [] };
+          } catch (error) {
+            console.warn(`Error loading ${metric}:`, error);
+            return { metric, data: [] };
+          }
         });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch chart data: ${response.status}`);
-        }
+        const chartResults = await Promise.all(chartPromises);
+        
+        // Convert to the expected format
+        const chartDataMap: ChartData = {};
+        chartResults.forEach(({ metric, data }) => {
+          if (data && data.length > 0) {
+            chartDataMap[metric] = data;
+          }
+        });
 
-        const data = await response.json();
-        setChartData(data || {});
+        setChartData(chartDataMap);
       } catch (error) {
         console.error('Chart data fetch error:', error);
         setChartError(error instanceof Error ? error.message : 'Failed to load chart data');
