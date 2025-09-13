@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { TrendChart } from './trend-chart';
+import { useState, useMemo } from 'react';
 import Link from "next/link";
 import { DeleteReportButton } from "./delete-report-button";
-import { QuickShareButton, ShareWithDoctorButton } from "./medical-sharing/share-report-button";
+// Temporarily disabled share buttons - will be enabled in future
+// import { QuickShareButton, ShareWithDoctorButton } from "./medical-sharing/share-report-button";
 
 interface Report {
   id: string;
@@ -28,15 +28,7 @@ interface ReportsInterfaceProps {
 }
 
 
-interface ChartDataPoint {
-  date: string;
-  value: number;
-  unit?: string;
-}
 
-interface ChartData {
-  [metricName: string]: ChartDataPoint[];
-}
 
 // Empty state component for when no reports exist
 function EmptyReportsState() {
@@ -114,65 +106,7 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
   const VISITS_PER_PAGE = 50;
 
 
-  // Chart data state
-  const [chartData, setChartData] = useState<ChartData>({});
-  const [chartLoading, setChartLoading] = useState(true);
-  const [chartError, setChartError] = useState<string | null>(null);
 
-  // Fetch chart data
-  useEffect(() => {
-    async function fetchChartData() {
-      try {
-        setChartLoading(true);
-        setChartError(null);
-        
-        // Common lab metrics to fetch
-        const metrics = ['platelets', 'alt', 'ast', 'bilirubin', 'albumin', 'creatinine', 'sodium', 'potassium'];
-        
-        // Fetch data for each metric
-        const chartPromises = metrics.map(async (metric) => {
-          try {
-            const response = await fetch(`/api/chart-data?metric=${metric}`, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            });
-
-            if (!response.ok) {
-              console.warn(`Failed to load ${metric}:`, response.status);
-              return { metric, data: [] };
-            }
-
-            const data = await response.json();
-            return { metric, data: data.data || [] };
-          } catch (error) {
-            console.warn(`Error loading ${metric}:`, error);
-            return { metric, data: [] };
-          }
-        });
-
-        const chartResults = await Promise.all(chartPromises);
-        
-        // Convert to the expected format
-        const chartDataMap: ChartData = {};
-        chartResults.forEach(({ metric, data }) => {
-          if (data && data.length > 0) {
-            chartDataMap[metric] = data;
-          }
-        });
-
-        setChartData(chartDataMap);
-      } catch (error) {
-        console.error('Chart data fetch error:', error);
-        setChartError(error instanceof Error ? error.message : 'Failed to load chart data');
-      } finally {
-        setChartLoading(false);
-      }
-    }
-
-    fetchChartData();
-  }, []);
 
   const getReportCategory = (reportType: string | null) => {
     if (!reportType) return { 
@@ -447,12 +381,14 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                 <span className="mr-2">🔗</span>
                 <span>Manage Shares</span>
               </Link>
+              {/* Temporarily hidden - will be enabled in future
               {reports.length > 0 && (
                 <ShareWithDoctorButton 
                   reportIds={reports.map(r => r.id)}
                   className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
                 />
               )}
+              */}
               <Link 
                 href="/upload-enhanced" 
                 className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -630,93 +566,7 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
         </div>
 
 
-        {/* Parameter Trending Section */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 mb-8">
-          <div className="p-6 border-b border-gray-100">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
-                <span className="text-xl text-white">📈</span>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Parameter Trending</h2>
-                <p className="text-sm text-gray-600">Historical trending analysis</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-6">
-            {chartLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading chart data...</p>
-                </div>
-              </div>
-            ) : chartError ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-red-600 text-xl">⚠️</span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Data Loading Error</h3>
-                  <p className="text-gray-600 mb-2">Failed to load historical data for trending analysis</p>
-                  <p className="text-sm text-red-600">Failed to fetch chart data</p>
-                  <button 
-                    onClick={() => window.location.reload()} 
-                    className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Retry
-                  </button>
-                </div>
-              </div>
-            ) : Object.keys(chartData).length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-gray-400 text-xl">📊</span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Trend Data Available</h3>
-                  <p className="text-gray-600">Upload more reports to see parameter trends</p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {Object.entries(chartData).map(([metricName, dataPoints]) => {
-                  if (!dataPoints || dataPoints.length === 0) return null;
-                  
-                  const currentValue = dataPoints[dataPoints.length - 1];
-                  const unit = currentValue?.unit || '';
-                  
-                  return (
-                    <div key={metricName} className="bg-gray-50 rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-semibold text-gray-900 capitalize">{metricName}</h3>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-blue-600">
-                            {currentValue?.value} {unit}
-                          </div>
-                          <div className="text-xs text-gray-500">Current value</div>
-                        </div>
-                      </div>
-                      
-                      <div className="bg-white rounded-lg p-4">
-                        <TrendChart
-                          title={`${metricName} Trend`}
-                          color="#8B5CF6"
-                          data={dataPoints.map(point => ({
-                            date: point.date,
-                            value: point.value
-                          }))}
-                          unit={unit}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+
 
         {/* Beautiful Visit-Based Medical Records */}
         {paginatedVisits.length === 0 ? (
@@ -801,11 +651,12 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                         );
                       })}
                       
-                      {/* Visit-Level Share Button */}
+                      {/* Temporarily hidden - will be enabled in future
                       <ShareWithDoctorButton 
                         reportIds={visit.reports.map(r => r.id)}
                         className="ml-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
                       />
+                      */}
                     </div>
                   </div>
                 </div>
@@ -864,10 +715,12 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                               <span className="mr-1">👁️</span>
                               View & Preview
                             </Link>
+                            {/* Temporarily hidden - will be enabled in future
                             <QuickShareButton 
                               reportId={report.id}
                               className="inline-flex items-center px-3 py-2 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-md transition-colors"
                             />
+                            */}
                             <button 
                               onClick={async () => {
                                 if (!report.objectKey) {
@@ -939,10 +792,12 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                               <span className="mr-1">👁️</span>
                               Preview
                             </Link>
+                            {/* Temporarily hidden - will be enabled in future
                             <QuickShareButton 
                               reportId={report.id}
                               className="inline-flex items-center px-3 py-2 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-md transition-colors"
                             />
+                            */}
                             <button 
                               onClick={async () => {
                                 if (!report.objectKey) {
