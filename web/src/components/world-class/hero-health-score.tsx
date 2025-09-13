@@ -218,7 +218,7 @@ export function HeroHealthScore({ healthData, meldScore }: HeroHealthScoreProps)
           {/* Quick Actions */}
           <div className="flex flex-wrap gap-3">
             <button 
-              onClick={() => window.location.href = '/reports'}
+              onClick={() => window.location.href = '/upload-enhanced'}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
             >
               📄 Upload New Report

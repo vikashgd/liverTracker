@@ -160,7 +160,7 @@ export function WorldClassDashboard({ charts }: WorldClassDashboardProps) {
             
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => window.location.href = '/'}
+                onClick={() => window.location.href = '/upload-enhanced'}
                 className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl font-semibold"
               >
                 📤 Upload
