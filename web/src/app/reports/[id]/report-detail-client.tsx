@@ -110,14 +110,11 @@ function LabTrendingChart({ currentMetrics, userId, selectedMetric }: {
       console.log(`📊 Loading real historical data for ${metric.name}...`);
 
       // Fetch real historical data from Medical Platform
-      const response = await fetch('/api/chart-data', {
-        method: 'POST',
+      const response = await fetch(`/api/chart-data?metric=${encodeURIComponent(metric.name)}`, {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          metricName: metric.name  // Fixed: API expects just metricName
-        })
+        }
       });
 
       if (!response.ok) {
