@@ -3,8 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from "next/link";
 import { DeleteReportButton } from "./delete-report-button";
-// Temporarily disabled share buttons - will be enabled in future
-// import { QuickShareButton, ShareWithDoctorButton } from "./medical-sharing/share-report-button";
+import { QuickShareButton, ShareWithDoctorButton } from "./medical-sharing/share-report-button";
 
 interface Report {
   id: string;
@@ -381,14 +380,12 @@ export function ReportsInterface({ reports }: ReportsInterfaceProps) {
                 <span className="mr-2">🔗</span>
                 <span>Manage Shares</span>
               </Link>
-              {/* Temporarily hidden - will be enabled in future
               {reports.length > 0 && (
                 <ShareWithDoctorButton 
                   reportIds={reports.map(r => r.id)}
                   className="w-full sm:w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
                 />
               )}
-              */}
               <Link 
                 href="/upload-enhanced" 
                 className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
