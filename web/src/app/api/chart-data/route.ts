@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 
       console.log(`✅ Chart Data API: User verified: ${userExists.email}`);
 
-      // CRITICAL: Get extracted metrics with STRICT user filtering
+      // CRITICAL: Get extracted metrics with STRICT user filtering AND deduplication
       const extractedMetrics = await prisma.extractedMetric.findMany({
         where: {
           name: metric,
@@ -81,17 +81,38 @@ export async function GET(request: NextRequest) {
             }
           }
         },
-        orderBy: {
-          report: {
-            reportDate: 'asc'
+        orderBy: [
+          {
+            report: {
+              reportDate: 'asc'
+            }
+          },
+          {
+            createdAt: 'desc' // Latest record for same date
           }
-        }
+        ]
       });
+
+      // DEDUPLICATION: Remove duplicate entries for same report date
+      const deduplicatedMetrics = [];
+      const seenDates = new Set();
+      
+      for (const metric of extractedMetrics) {
+        const reportDate = metric.report.reportDate?.toISOString().split('T')[0] || 
+                          metric.report.createdAt.toISOString().split('T')[0];
+        
+        if (!seenDates.has(reportDate)) {
+          seenDates.add(reportDate);
+          deduplicatedMetrics.push(metric);
+        }
+      }
+      
+      console.log(`📊 Chart Data API: Deduplicated ${extractedMetrics.length} -> ${deduplicatedMetrics.length} metrics for ${metric}`);
 
       console.log(`📊 Chart Data API: Found ${extractedMetrics.length} metrics for ${metric}`);
 
       // CRITICAL: Verify ALL returned data belongs to requesting user
-      const contaminated = extractedMetrics.filter(m => m.report.userId !== userId);
+      const contaminated = deduplicatedMetrics.filter(m => m.report.userId !== userId);
       if (contaminated.length > 0) {
         console.error('🚨 CRITICAL: Chart data contamination detected!', {
           requestingUser: userId,
@@ -117,7 +138,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Transform to chart data format
-      const chartData = extractedMetrics.map(metric => ({
+      const chartData = deduplicatedMetrics.map(metric => ({
         date: metric.report.reportDate || metric.report.createdAt,
         value: metric.value || 0,
         unit: metric.unit || '',
