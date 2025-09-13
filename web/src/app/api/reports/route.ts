@@ -232,12 +232,12 @@ export async function POST(request: NextRequest) {
       // If extracted data exists, save metrics
       if (extracted && extracted.metricsAll && Array.isArray(extracted.metricsAll)) {
         const metrics = extracted.metricsAll.map((metric: any) => ({
-          reportFileId: reportFile.id,
+          reportId: reportFile.id, // Fixed: use reportId not reportFileId
           name: metric.name || 'unknown',
-          value: metric.value?.toString() || '',
-          unit: metric.unit || '',
-          category: metric.category || 'general',
-          createdAt: new Date()
+          value: metric.value ? parseFloat(metric.value.toString()) : null, // Fixed: convert to Float
+          textValue: metric.value?.toString() || '', // Store original text value
+          unit: metric.unit || null,
+          category: metric.category || 'general'
         }));
 
         if (metrics.length > 0) {
