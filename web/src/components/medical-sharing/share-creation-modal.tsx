@@ -39,7 +39,7 @@ export function ShareCreationModal({
 }: ShareCreationModalProps) {
   const [step, setStep] = useState<'type' | 'content' | 'security' | 'review' | 'success'>('type');
   const [config, setConfig] = useState<ShareConfig>({
-    shareType: reportIds.length > 0 ? 'specific_reports' : 'complete_profile',
+    shareType: 'complete_profile', // Always default to complete profile
     title: '',
     description: '',
     reportIds: reportIds,
@@ -206,6 +206,7 @@ export function ShareCreationModal({
                     </div>
                   </label>
 
+                  {/* Temporarily hidden - will be enabled in future
                   <label className="flex items-start gap-3 p-4 border border-medical-neutral-200 rounded-lg cursor-pointer hover:bg-medical-neutral-50 transition-colors">
                     <input
                       type="radio"
@@ -239,6 +240,7 @@ export function ShareCreationModal({
                       </div>
                     </div>
                   </label>
+                  */}
                 </div>
               </div>
 
@@ -293,10 +295,8 @@ export function ShareCreationModal({
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="includeProfile"
-                      checked={config.includeProfile}
-                      onCheckedChange={(checked) => 
-                        setConfig(prev => ({ ...prev, includeProfile: !!checked }))
-                      }
+                      checked={true}
+                      disabled={true}
                     />
                     <Label htmlFor="includeProfile" className="font-medium">
                       Patient Profile & Demographics
@@ -306,10 +306,8 @@ export function ShareCreationModal({
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="includeDashboard"
-                      checked={config.includeDashboard}
-                      onCheckedChange={(checked) => 
-                        setConfig(prev => ({ ...prev, includeDashboard: !!checked }))
-                      }
+                      checked={true}
+                      disabled={true}
                     />
                     <Label htmlFor="includeDashboard" className="font-medium">
                       Dashboard & Trends
@@ -319,10 +317,8 @@ export function ShareCreationModal({
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="includeScoring"
-                      checked={config.includeScoring}
-                      onCheckedChange={(checked) => 
-                        setConfig(prev => ({ ...prev, includeScoring: !!checked }))
-                      }
+                      checked={true}
+                      disabled={true}
                     />
                     <Label htmlFor="includeScoring" className="font-medium">
                       MELD & Child-Pugh Scores
@@ -332,10 +328,8 @@ export function ShareCreationModal({
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="includeAI"
-                      checked={config.includeAI}
-                      onCheckedChange={(checked) => 
-                        setConfig(prev => ({ ...prev, includeAI: !!checked }))
-                      }
+                      checked={true}
+                      disabled={true}
                     />
                     <Label htmlFor="includeAI" className="font-medium">
                       AI Insights & Predictions
@@ -345,10 +339,8 @@ export function ShareCreationModal({
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="includeFiles"
-                      checked={config.includeFiles}
-                      onCheckedChange={(checked) => 
-                        setConfig(prev => ({ ...prev, includeFiles: !!checked }))
-                      }
+                      checked={true}
+                      disabled={true}
                     />
                     <Label htmlFor="includeFiles" className="font-medium">
                       Original Documents & Images
