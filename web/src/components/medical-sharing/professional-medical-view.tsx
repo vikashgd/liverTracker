@@ -181,24 +181,36 @@ export function ProfessionalMedicalView({
         {/* Tabbed Medical Content */}
         <div className="bg-white rounded-xl shadow-sm border border-medical-neutral-200">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6 bg-medical-neutral-50 p-1 rounded-t-xl">
-              <TabsTrigger value="lab-results" className="text-sm">
-                Lab Results
+            <TabsList className="grid w-full grid-cols-5 bg-gradient-to-r from-blue-50 to-indigo-50 p-2 rounded-t-xl border-b-2 border-blue-200">
+              <TabsTrigger 
+                value="lab-results" 
+                className="text-base font-semibold px-6 py-3 rounded-lg transition-all duration-200 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-blue-100 text-blue-700"
+              >
+                🧪 Lab Results
               </TabsTrigger>
-              <TabsTrigger value="consolidated" className="text-sm">
-                Consolidated Report
+              <TabsTrigger 
+                value="consolidated" 
+                className="text-base font-semibold px-6 py-3 rounded-lg transition-all duration-200 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-green-100 text-green-700"
+              >
+                📊 Consolidated Report
               </TabsTrigger>
-              <TabsTrigger value="trends" className="text-sm">
-                Trends
+              <TabsTrigger 
+                value="trends" 
+                className="text-base font-semibold px-6 py-3 rounded-lg transition-all duration-200 data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-purple-100 text-purple-700"
+              >
+                📈 Trends
               </TabsTrigger>
-              <TabsTrigger value="scoring" className="text-sm">
-                Clinical Scoring
+              <TabsTrigger 
+                value="scoring" 
+                className="text-base font-semibold px-6 py-3 rounded-lg transition-all duration-200 data-[state=active]:bg-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-orange-100 text-orange-700"
+              >
+                🎯 Clinical Scoring
               </TabsTrigger>
-              <TabsTrigger value="documents" className="text-sm">
-                Documents
-              </TabsTrigger>
-              <TabsTrigger value="profile" className="text-sm">
-                Patient Profile
+              <TabsTrigger 
+                value="profile" 
+                className="text-base font-semibold px-6 py-3 rounded-lg transition-all duration-200 data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg hover:bg-indigo-100 text-indigo-700"
+              >
+                👤 Patient Profile
               </TabsTrigger>
             </TabsList>
 
@@ -219,9 +231,7 @@ export function ProfessionalMedicalView({
                 <ScoringTab scoring={medicalData?.scoring} />
               </TabsContent>
 
-              <TabsContent value="documents" className="mt-0">
-                <OriginalDocumentsTab files={medicalData?.files} shareToken={shareToken} />
-              </TabsContent>
+
 
               <TabsContent value="profile" className="mt-0">
                 <PatientProfileTab profile={
