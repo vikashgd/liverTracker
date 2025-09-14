@@ -22,7 +22,7 @@ export function ProfessionalMedicalView({
   medicalData, 
   shareInfo 
 }: ProfessionalMedicalViewProps) {
-  const [activeTab, setActiveTab] = useState("summary");
+  const [activeTab, setActiveTab] = useState("lab-results");
 
 
 
@@ -113,22 +113,6 @@ export function ProfessionalMedicalView({
               >
                 <Download className="w-4 h-4" />
                 Export PDF
-              </button>
-              
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-2 px-4 py-2 border border-medical-neutral-300 text-medical-neutral-700 rounded-lg hover:bg-medical-neutral-50 transition-colors"
-              >
-                <Printer className="w-4 h-4" />
-                Print
-              </button>
-              
-              <button
-                onClick={handleDownloadData}
-                className="flex items-center gap-2 px-4 py-2 border border-medical-neutral-300 text-medical-neutral-700 rounded-lg hover:bg-medical-neutral-50 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Data (CSV)
               </button>
             </div>
           </div>

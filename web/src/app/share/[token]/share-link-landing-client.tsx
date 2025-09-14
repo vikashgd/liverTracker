@@ -214,10 +214,6 @@ export function ShareLinkLandingClient({ token }: ShareLinkLandingClientProps) {
   if (step === 'viewing' && medicalData) {
     return (
       <div className="min-h-screen">
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <div className="text-green-800 font-semibold">✅ Medical Data Loaded Successfully</div>
-          <div className="text-green-600 text-sm">Displaying {Array.isArray(medicalData.reports) ? medicalData.reports.length : 0} reports</div>
-        </div>
         <ProfessionalMedicalView 
           shareToken={token}
           medicalData={medicalData}
