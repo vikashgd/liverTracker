@@ -25,7 +25,7 @@ export default function NotFound() {
         </div>
         
         <div className="mt-12 text-sm text-gray-500">
-          <p>LiverTracker - Medical Intelligence Platform</p>
+          <p>LiverTracker - Track Your Liver. Extend Your Life.</p>
         </div>
       </div>
     </div>

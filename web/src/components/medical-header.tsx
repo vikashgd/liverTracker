@@ -124,19 +124,16 @@ export function MedicalHeader() {
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
             <Link href="/dashboard" className="flex items-center space-x-3 group">
-              <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-xl flex items-center justify-center group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
-                  <Activity className="w-5 h-5 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                  <Heart className="w-2.5 h-2.5 text-white" />
-                </div>
-              </div>
+              <img 
+                src="/logo150x150.png" 
+                alt="LiverTracker Logo" 
+                className="w-10 h-10 group-hover:scale-105 transition-transform duration-200"
+              />
               <div className="hidden sm:block">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
                   LiverTracker
                 </h1>
-                <p className="text-xs text-slate-500 font-medium">Medical Intelligence Platform</p>
+                <p className="text-xs text-slate-500 font-medium">Track Your Liver. Extend Your Life.</p>
               </div>
             </Link>
           </div>
