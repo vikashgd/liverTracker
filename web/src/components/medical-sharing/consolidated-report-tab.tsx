@@ -279,6 +279,68 @@ export function ConsolidatedReportTab({ reports }: ConsolidatedReportTabProps) {
     return colors[category as keyof typeof colors] || 'bg-gray-50 border-gray-200 text-gray-700';
   };
 
+  // Generate CSV data from the consolidated report
+  const generateCSVData = (
+    parameters: any[], 
+    dateGroups: any[], 
+    getValueFn: (paramName: string, dateGroup: any) => { value: number | null; unit: string | null; isAbnormal: boolean; count: number }
+  ) => {
+    const headers = [
+      'Lab Parameter',
+      'Unit',
+      ...dateGroups.map(dg => dg.label),
+      'Reference Range'
+    ];
+    
+    const rows = parameters.map(param => {
+      const row = [
+        param.name,
+        param.unit || ''
+      ];
+      
+      // Add values for each date group
+      dateGroups.forEach(dateGroup => {
+        const { value, unit } = getValueFn(param.name, dateGroup);
+        if (value !== null) {
+          row.push(`${value.toFixed(2)}${unit ? ` ${unit}` : ''}`);
+        } else {
+          row.push('—');
+        }
+      });
+      
+      // Add reference range
+      if (param.range[0] !== null && param.range[1] !== null) {
+        row.push(`${param.range[0]} - ${param.range[1]}${param.unit ? ` ${param.unit}` : ''}`);
+      } else {
+        row.push('No reference range');
+      }
+      
+      return row;
+    });
+    
+    return [headers, ...rows];
+  };
+
+  // Download CSV file
+  const downloadCSV = (data: string[][], filename: string) => {
+    const csvContent = data.map(row => 
+      row.map(cell => `"${cell}"`).join(',')
+    ).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   if (!reports || reports.length === 0) {
     return (
       <div className="p-6">
@@ -352,8 +414,31 @@ export function ConsolidatedReportTab({ reports }: ConsolidatedReportTabProps) {
               )}
             </div>
 
-            <div className="text-sm text-gray-600">
-              {dateGroups.length} {groupByMonth ? 'month' : 'date'}{dateGroups.length !== 1 ? 's' : ''} • {parametersToShow.length} parameter{parametersToShow.length !== 1 ? 's' : ''}
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-600">
+                {dateGroups.length} {groupByMonth ? 'month' : 'date'}{dateGroups.length !== 1 ? 's' : ''} • {parametersToShow.length} parameter{parametersToShow.length !== 1 ? 's' : ''}
+              </div>
+              
+              {/* Print and Export Buttons */}
+              <div className="flex items-center gap-2 print:hidden">
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                >
+                  🖨️ Print
+                </button>
+                
+                <button
+                  onClick={() => {
+                    // Generate CSV data from the table
+                    const csvData = generateCSVData(parametersToShow, dateGroups, getValue);
+                    downloadCSV(csvData, 'consolidated-lab-report.csv');
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                >
+                  📊 Export
+                </button>
+              </div>
             </div>
           </div>
         </div>
