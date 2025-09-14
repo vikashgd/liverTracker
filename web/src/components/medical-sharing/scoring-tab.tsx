@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Calculator, TrendingUp, AlertTriangle } from "lucide-react";
+import { Calculator, AlertTriangle } from "lucide-react";
 
 interface ScoringTabProps {
   scoring: any;
@@ -144,72 +144,7 @@ export function ScoringTab({ scoring }: ScoringTabProps) {
           </div>
         </div>
 
-        {/* Score Trends with Sample Data */}
-        <div className="bg-white rounded-lg border border-medical-neutral-200 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
-            <h4 className="text-lg font-semibold text-medical-neutral-900">Score Trends</h4>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* MELD Trend */}
-            <div>
-              <h5 className="font-medium text-medical-neutral-900 mb-3">MELD Score History</h5>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center p-2 bg-medical-neutral-50 rounded">
-                  <span className="text-sm">Current</span>
-                  <span className="font-semibold text-green-600">13 ↓</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-medical-neutral-50 rounded">
-                  <span className="text-sm">3 months ago</span>
-                  <span className="font-semibold">15</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-medical-neutral-50 rounded">
-                  <span className="text-sm">6 months ago</span>
-                  <span className="font-semibold text-red-600">18 ↑</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-medical-neutral-50 rounded">
-                  <span className="text-sm">1 year ago</span>
-                  <span className="font-semibold">16</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Child-Pugh Trend */}
-            <div>
-              <h5 className="font-medium text-medical-neutral-900 mb-3">Child-Pugh History</h5>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center p-2 bg-medical-neutral-50 rounded">
-                  <span className="text-sm">Current</span>
-                  <span className="font-semibold text-green-600">B (8) ↑</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-medical-neutral-50 rounded">
-                  <span className="text-sm">3 months ago</span>
-                  <span className="font-semibold">B (9)</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-medical-neutral-50 rounded">
-                  <span className="text-sm">6 months ago</span>
-                  <span className="font-semibold text-red-600">C (11) ↓</span>
-                </div>
-                <div className="flex justify-between items-center p-2 bg-medical-neutral-50 rounded">
-                  <span className="text-sm">1 year ago</span>
-                  <span className="font-semibold">B (8)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Trend Analysis */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h5 className="font-medium text-blue-900 mb-2">Trend Analysis</h5>
-            <div className="text-sm text-blue-800 space-y-1">
-              <p>• <strong>Overall Direction:</strong> Improving - both scores show positive trends</p>
-              <p>• <strong>Key Improvement:</strong> MELD decreased from 18 to 13 over 6 months</p>
-              <p>• <strong>Child-Pugh Recovery:</strong> Improved from Class C back to Class B</p>
-              <p>• <strong>Stability:</strong> Scores have been stable for the past 3 months</p>
-            </div>
-          </div>
-        </div>
 
         {/* Clinical Significance */}
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
@@ -258,28 +193,42 @@ export function ScoringTab({ scoring }: ScoringTabProps) {
             </div>
           </div>
 
-          {(scoring?.meld?.current || scoring?.meld?.components) && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <div className="text-center p-2 bg-medical-neutral-50 rounded">
-                  <div className="font-semibold">Bilirubin</div>
-                  <div>{scoring.meld.current?.bilirubin || scoring.meld.components?.bilirubin} mg/dL</div>
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-medical-neutral-700 mb-2">
+              Calculation Parameters:
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="text-center p-3 bg-medical-neutral-50 rounded-lg border">
+                <div className="font-semibold text-medical-neutral-900">Bilirubin</div>
+                <div className="text-lg font-bold text-medical-primary-600 mt-1">
+                  {scoring?.meld?.components?.bilirubin || '--'}
                 </div>
-                <div className="text-center p-2 bg-medical-neutral-50 rounded">
-                  <div className="font-semibold">Creatinine</div>
-                  <div>{scoring.meld.current?.creatinine || scoring.meld.components?.creatinine} mg/dL</div>
-                </div>
-                <div className="text-center p-2 bg-medical-neutral-50 rounded">
-                  <div className="font-semibold">INR</div>
-                  <div>{scoring.meld.current?.inr || scoring.meld.components?.inr}</div>
-                </div>
+                <div className="text-xs text-medical-neutral-500">mg/dL</div>
               </div>
-              
-              <div className="text-xs text-medical-neutral-600 text-center">
-                Last calculated: {new Date(scoring.meld.current?.calculatedAt || scoring.meld.calculatedAt).toLocaleDateString()}
+              <div className="text-center p-3 bg-medical-neutral-50 rounded-lg border">
+                <div className="font-semibold text-medical-neutral-900">Creatinine</div>
+                <div className="text-lg font-bold text-medical-primary-600 mt-1">
+                  {scoring?.meld?.components?.creatinine || '--'}
+                </div>
+                <div className="text-xs text-medical-neutral-500">mg/dL</div>
+              </div>
+              <div className="text-center p-3 bg-medical-neutral-50 rounded-lg border">
+                <div className="font-semibold text-medical-neutral-900">INR</div>
+                <div className="text-lg font-bold text-medical-primary-600 mt-1">
+                  {scoring?.meld?.components?.inr || '--'}
+                </div>
+                <div className="text-xs text-medical-neutral-500">ratio</div>
               </div>
             </div>
-          )}
+            
+            <div className="text-xs text-medical-neutral-600 text-center bg-medical-neutral-50 py-2 rounded">
+              Last calculated: {scoring?.meld?.calculatedAt ? new Date(scoring.meld.calculatedAt).toLocaleDateString() : 'Not available'}
+            </div>
+            
+            <div className="text-xs text-medical-neutral-500 text-center">
+              Formula: 3.78×ln(bilirubin) + 11.2×ln(INR) + 9.57×ln(creatinine) + 6.43
+            </div>
+          </div>
         </div>
 
         {/* Child-Pugh Score */}
@@ -298,43 +247,63 @@ export function ScoringTab({ scoring }: ScoringTabProps) {
             </div>
           </div>
 
-          {(scoring?.childPugh?.current || scoring?.childPugh?.components) && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="text-center p-2 bg-medical-neutral-50 rounded">
-                  <div className="font-semibold">Albumin</div>
-                  <div>{scoring.childPugh.current?.albumin || scoring.childPugh.components?.albumin} g/dL</div>
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-medical-neutral-700 mb-2">
+              Calculation Parameters:
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+              <div className="text-center p-3 bg-medical-neutral-50 rounded-lg border">
+                <div className="font-semibold text-medical-neutral-900">Bilirubin</div>
+                <div className="text-lg font-bold text-medical-secondary-600 mt-1">
+                  {scoring?.childPugh?.components?.bilirubin || '--'}
                 </div>
-                <div className="text-center p-2 bg-medical-neutral-50 rounded">
-                  <div className="font-semibold">Ascites</div>
-                  <div>{scoring.childPugh.current?.ascites || scoring.childPugh.components?.ascites}</div>
-                </div>
+                <div className="text-xs text-medical-neutral-500">mg/dL</div>
               </div>
-              
-              <div className="text-xs text-medical-neutral-600 text-center">
-                Last calculated: {new Date(scoring.childPugh.current?.calculatedAt || scoring.childPugh.calculatedAt).toLocaleDateString()}
+              <div className="text-center p-3 bg-medical-neutral-50 rounded-lg border">
+                <div className="font-semibold text-medical-neutral-900">Albumin</div>
+                <div className="text-lg font-bold text-medical-secondary-600 mt-1">
+                  {scoring?.childPugh?.components?.albumin || '--'}
+                </div>
+                <div className="text-xs text-medical-neutral-500">g/dL</div>
               </div>
             </div>
-          )}
+            
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="text-center p-3 bg-medical-neutral-50 rounded-lg border">
+                <div className="font-semibold text-medical-neutral-900">INR</div>
+                <div className="text-lg font-bold text-medical-secondary-600 mt-1">
+                  {scoring?.childPugh?.components?.inr || '--'}
+                </div>
+                <div className="text-xs text-medical-neutral-500">ratio</div>
+              </div>
+              <div className="text-center p-3 bg-medical-neutral-50 rounded-lg border">
+                <div className="font-semibold text-medical-neutral-900">Ascites</div>
+                <div className="text-lg font-bold text-medical-secondary-600 mt-1 capitalize">
+                  {scoring?.childPugh?.components?.ascites || 'none'}
+                </div>
+                <div className="text-xs text-medical-neutral-500">clinical</div>
+              </div>
+              <div className="text-center p-3 bg-medical-neutral-50 rounded-lg border">
+                <div className="font-semibold text-medical-neutral-900">Encephalopathy</div>
+                <div className="text-lg font-bold text-medical-secondary-600 mt-1 capitalize">
+                  {scoring?.childPugh?.components?.encephalopathy || 'none'}
+                </div>
+                <div className="text-xs text-medical-neutral-500">clinical</div>
+              </div>
+            </div>
+            
+            <div className="text-xs text-medical-neutral-600 text-center bg-medical-neutral-50 py-2 rounded">
+              Last calculated: {scoring?.childPugh?.calculatedAt ? new Date(scoring.childPugh.calculatedAt).toLocaleDateString() : 'Not available'}
+            </div>
+            
+            <div className="text-xs text-medical-neutral-500 text-center">
+              Scoring: Bilirubin + Albumin + INR + Ascites + Encephalopathy (1-3 points each)
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Score Trends */}
-      <div className="bg-white rounded-lg border border-medical-neutral-200 p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="w-5 h-5 text-blue-600" />
-          <h4 className="text-lg font-semibold text-medical-neutral-900">Score Trends</h4>
-        </div>
-        
-        <div className="bg-medical-neutral-50 rounded-lg border-2 border-dashed border-medical-neutral-300 p-8 text-center">
-          <div className="text-medical-neutral-600 mb-2">
-            Historical score trends will be displayed here
-          </div>
-          <div className="text-sm text-medical-neutral-500">
-            Chart showing MELD and Child-Pugh score progression over time
-          </div>
-        </div>
-      </div>
+
 
       {/* Clinical Significance */}
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
