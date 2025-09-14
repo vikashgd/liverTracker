@@ -19,8 +19,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LiverTracker - Medical Intelligence Platform",
-  description: "World-class medical intelligence platform for liver health monitoring, analysis, and clinical decision support",
+  title: "LiverTracker - Track Your Liver. Extend Your Life.",
+  description: "Track Your Liver. Extend Your Life. Advanced liver health monitoring, MELD score tracking, and clinical decision support platform.",
   keywords: ["liver health", "medical tracker", "health monitoring", "MELD score", "Child-Pugh", "medical calculator", "health analytics"],
   authors: [{ name: "LiverTracker Team" }],
   manifest: "/manifest.json",
@@ -38,8 +38,8 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     siteName: "LiverTracker",
-    title: "LiverTracker - Medical Intelligence Platform", 
-    description: "World-class medical intelligence platform for liver health monitoring and analysis",
+    title: "LiverTracker - Track Your Liver. Extend Your Life.", 
+    description: "Track Your Liver. Extend Your Life. Advanced liver health monitoring and analysis platform.",
   },
   robots: {
     index: true,
