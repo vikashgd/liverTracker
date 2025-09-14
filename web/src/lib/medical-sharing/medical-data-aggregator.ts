@@ -329,69 +329,215 @@ export class MedicalDataAggregator {
   }
 
   /**
-   * Get scoring data (MELD and Child-Pugh)
+   * Get scoring data (MELD and Child-Pugh) - Fixed to calculate directly from database
    */
   private async getScoringData(userId: string) {
     try {
-      // Get latest values for scoring
-      const latestValues = await this.platform.getLatestValues(userId);
+      console.log('📊 [MedicalDataAggregator] Getting scoring data for user:', userId);
 
-      // Calculate MELD score
+      // Get latest lab values directly from database for MELD calculation
+      const latestBilirubin = await prisma.extractedMetric.findFirst({
+        where: {
+          report: { userId },
+          name: { contains: 'Bilirubin', mode: 'insensitive' },
+          value: { not: null }
+        },
+        include: { report: { select: { reportDate: true } } },
+        orderBy: [{ report: { reportDate: 'desc' } }, { createdAt: 'desc' }]
+      });
+
+      const latestCreatinine = await prisma.extractedMetric.findFirst({
+        where: {
+          report: { userId },
+          name: { contains: 'Creatinine', mode: 'insensitive' },
+          value: { not: null }
+        },
+        include: { report: { select: { reportDate: true } } },
+        orderBy: [{ report: { reportDate: 'desc' } }, { createdAt: 'desc' }]
+      });
+
+      const latestINR = await prisma.extractedMetric.findFirst({
+        where: {
+          report: { userId },
+          name: { contains: 'INR', mode: 'insensitive' },
+          value: { not: null }
+        },
+        include: { report: { select: { reportDate: true } } },
+        orderBy: [{ report: { reportDate: 'desc' } }, { createdAt: 'desc' }]
+      });
+
+      const latestSodium = await prisma.extractedMetric.findFirst({
+        where: {
+          report: { userId },
+          name: { contains: 'Sodium', mode: 'insensitive' },
+          value: { not: null }
+        },
+        include: { report: { select: { reportDate: true } } },
+        orderBy: [{ report: { reportDate: 'desc' } }, { createdAt: 'desc' }]
+      });
+
+      const latestAlbumin = await prisma.extractedMetric.findFirst({
+        where: {
+          report: { userId },
+          name: { contains: 'Albumin', mode: 'insensitive' },
+          value: { not: null }
+        },
+        include: { report: { select: { reportDate: true } } },
+        orderBy: [{ report: { reportDate: 'desc' } }, { createdAt: 'desc' }]
+      });
+
+      console.log('📊 [MedicalDataAggregator] Latest lab values:');
+      console.log(`  - Bilirubin: ${latestBilirubin?.value} ${latestBilirubin?.unit}`);
+      console.log(`  - Creatinine: ${latestCreatinine?.value} ${latestCreatinine?.unit}`);
+      console.log(`  - INR: ${latestINR?.value} ${latestINR?.unit}`);
+      console.log(`  - Sodium: ${latestSodium?.value} ${latestSodium?.unit}`);
+      console.log(`  - Albumin: ${latestAlbumin?.value} ${latestAlbumin?.unit}`);
+
+      // Calculate MELD score if we have the required parameters
       let meldResult: MELDResult | null = null;
-      try {
-        const platformMeld = await this.platform.calculateMELD(userId);
-        if (platformMeld) {
-          // Convert platform MELDResult to medical sharing MELDResult
-          meldResult = {
-            score: platformMeld.meld,
-            class: platformMeld.urgency === 'Low' ? 'Low' : 
-                   platformMeld.urgency === 'Medium' ? 'Moderate' :
-                   platformMeld.urgency === 'High' ? 'High' : 'Critical',
-            components: {
-              creatinine: 1.0, // Default - would need to extract from platform
-              bilirubin: 1.0,  // Default - would need to extract from platform  
-              inr: 1.0         // Default - would need to extract from platform
-            },
-            calculatedAt: new Date()
-          };
+      if (latestBilirubin?.value && latestCreatinine?.value && latestINR?.value) {
+        const bilirubin = latestBilirubin.value;
+        const creatinine = latestCreatinine.value;
+        const inr = latestINR.value;
+        const sodium = latestSodium?.value;
+
+        // Apply minimum values to avoid negative logarithms
+        const safeBilirubin = Math.max(bilirubin, 1.0);
+        const safeCreatinine = Math.max(creatinine, 1.0);
+        const safeINR = Math.max(inr, 1.0);
+
+        // Calculate MELD using standard formula
+        const meldRaw = 3.78 * Math.log(safeBilirubin) + 
+                        11.2 * Math.log(safeINR) + 
+                        9.57 * Math.log(safeCreatinine) + 
+                        6.43;
+        
+        const meldScore = Math.max(6, Math.min(40, Math.round(meldRaw)));
+
+        // Calculate MELD-Na if sodium available
+        let meldNa: number | undefined;
+        if (sodium) {
+          const safeSodium = Math.max(125, Math.min(137, sodium));
+          meldNa = meldScore + 1.32 * (137 - safeSodium) - (0.033 * meldScore * (137 - safeSodium));
+          meldNa = Math.max(6, Math.min(40, Math.round(meldNa)));
         }
-      } catch (error) {
-        console.warn('Could not calculate MELD score:', error);
+
+        // Determine urgency
+        const finalScore = meldNa || meldScore;
+        let urgency: 'Low' | 'Moderate' | 'High' | 'Critical';
+        if (finalScore <= 9) urgency = 'Low';
+        else if (finalScore <= 19) urgency = 'Moderate';
+        else if (finalScore <= 29) urgency = 'High';
+        else urgency = 'Critical';
+
+        meldResult = {
+          score: finalScore,
+          class: urgency,
+          components: {
+            bilirubin,
+            creatinine,
+            inr
+          },
+          calculatedAt: new Date()
+        };
+
+        console.log('✅ [MedicalDataAggregator] MELD calculated:', {
+          score: finalScore,
+          meldNa,
+          urgency,
+          components: { bilirubin, creatinine, inr }
+        });
+      } else {
+        console.log('❌ [MedicalDataAggregator] Cannot calculate MELD - missing required parameters');
       }
 
-      // Create Child-Pugh result (simplified for now)
-      const childPughResult: ChildPughResult | null = meldResult ? {
-        score: Math.min(15, Math.max(5, Math.round(meldResult.score / 2) + 5)),
-        class: meldResult.score < 15 ? 'A' : meldResult.score < 25 ? 'B' : 'C',
-        components: {
-          bilirubin: meldResult.components.bilirubin,
-          albumin: 3.5, // Default value
-          inr: meldResult.components.inr,
-          ascites: 'none',
-          encephalopathy: 'none'
-        },
-        calculatedAt: meldResult.calculatedAt,
-        trend: meldResult.trend
-      } : null;
+      // Calculate Child-Pugh score if we have required parameters
+      let childPughResult: ChildPughResult | null = null;
+      if (latestBilirubin?.value && latestAlbumin?.value && latestINR?.value) {
+        const bilirubin = latestBilirubin.value;
+        const albumin = latestAlbumin.value;
+        const inr = latestINR.value;
+
+        let childPughScore = 0;
+        
+        // Bilirubin points
+        if (bilirubin < 2.0) childPughScore += 1;
+        else if (bilirubin <= 3.0) childPughScore += 2;
+        else childPughScore += 3;
+        
+        // Albumin points
+        if (albumin > 3.5) childPughScore += 1;
+        else if (albumin >= 2.8) childPughScore += 2;
+        else childPughScore += 3;
+        
+        // INR points
+        if (inr < 1.7) childPughScore += 1;
+        else if (inr <= 2.3) childPughScore += 2;
+        else childPughScore += 3;
+        
+        // Get patient profile for ascites/encephalopathy
+        const profile = await prisma.patientProfile.findUnique({
+          where: { userId }
+        });
+
+        // Ascites points
+        const ascites = profile?.ascites || 'none';
+        if (ascites === 'none') childPughScore += 1;
+        else if (ascites === 'mild') childPughScore += 2;
+        else childPughScore += 3;
+        
+        // Encephalopathy points
+        const encephalopathy = profile?.encephalopathy || 'none';
+        if (encephalopathy === 'none') childPughScore += 1;
+        else if (encephalopathy === 'grade1-2') childPughScore += 2;
+        else childPughScore += 3;
+        
+        // Determine class
+        const childPughClass = childPughScore <= 6 ? 'A' : childPughScore <= 9 ? 'B' : 'C';
+        
+        childPughResult = {
+          score: childPughScore,
+          class: childPughClass,
+          components: {
+            bilirubin,
+            albumin,
+            inr,
+            ascites,
+            encephalopathy
+          },
+          calculatedAt: new Date()
+        };
+
+        console.log('✅ [MedicalDataAggregator] Child-Pugh calculated:', {
+          score: childPughScore,
+          class: childPughClass,
+          components: { bilirubin, albumin, inr, ascites, encephalopathy }
+        });
+      } else {
+        console.log('❌ [MedicalDataAggregator] Cannot calculate Child-Pugh - missing required parameters');
+      }
 
       const trends: ScoringTrends = {
         meldHistory: [],
         childPughHistory: [],
         trendAnalysis: {
-          direction: meldResult?.trend || 'stable',
+          direction: 'stable',
           confidence: 0.8,
           significantChanges: []
         }
       };
 
-      return {
+      const result = {
         meld: meldResult,
         childPugh: childPughResult,
         trends
       };
 
+      console.log('📊 [MedicalDataAggregator] Final scoring result:', result);
+      return result;
+
     } catch (error) {
-      console.error('Error getting scoring data:', error);
+      console.error('❌ [MedicalDataAggregator] Error getting scoring data:', error);
       return this.getEmptyScoringData();
     }
   }
