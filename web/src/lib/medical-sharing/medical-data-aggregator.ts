@@ -336,10 +336,14 @@ export class MedicalDataAggregator {
       console.log('📊 [MedicalDataAggregator] Getting scoring data for user:', userId);
 
       // Get latest lab values directly from database for MELD calculation
+      // Use more specific search to get the right bilirubin value
       const latestBilirubin = await prisma.extractedMetric.findFirst({
         where: {
           report: { userId },
-          name: { contains: 'Bilirubin', mode: 'insensitive' },
+          OR: [
+            { name: { equals: 'Bilirubin', mode: 'insensitive' } },
+            { name: { equals: 'Total Bilirubin', mode: 'insensitive' } }
+          ],
           value: { not: null }
         },
         include: { report: { select: { reportDate: true } } },
@@ -387,11 +391,11 @@ export class MedicalDataAggregator {
       });
 
       console.log('📊 [MedicalDataAggregator] Latest lab values:');
-      console.log(`  - Bilirubin: ${latestBilirubin?.value} ${latestBilirubin?.unit}`);
-      console.log(`  - Creatinine: ${latestCreatinine?.value} ${latestCreatinine?.unit}`);
-      console.log(`  - INR: ${latestINR?.value} ${latestINR?.unit}`);
-      console.log(`  - Sodium: ${latestSodium?.value} ${latestSodium?.unit}`);
-      console.log(`  - Albumin: ${latestAlbumin?.value} ${latestAlbumin?.unit}`);
+      console.log(`  - Bilirubin: ${latestBilirubin?.value} ${latestBilirubin?.unit} (${latestBilirubin?.name}) [${latestBilirubin?.report.reportDate?.toISOString().split('T')[0]}]`);
+      console.log(`  - Creatinine: ${latestCreatinine?.value} ${latestCreatinine?.unit} (${latestCreatinine?.name}) [${latestCreatinine?.report.reportDate?.toISOString().split('T')[0]}]`);
+      console.log(`  - INR: ${latestINR?.value} ${latestINR?.unit} (${latestINR?.name}) [${latestINR?.report.reportDate?.toISOString().split('T')[0]}]`);
+      console.log(`  - Sodium: ${latestSodium?.value} ${latestSodium?.unit} (${latestSodium?.name}) [${latestSodium?.report.reportDate?.toISOString().split('T')[0]}]`);
+      console.log(`  - Albumin: ${latestAlbumin?.value} ${latestAlbumin?.unit} (${latestAlbumin?.name}) [${latestAlbumin?.report.reportDate?.toISOString().split('T')[0]}]`);
 
       // Calculate MELD score if we have the required parameters
       let meldResult: MELDResult | null = null;
