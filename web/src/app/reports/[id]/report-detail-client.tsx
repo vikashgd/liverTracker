@@ -823,9 +823,22 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
                                   </span>
                                 )}
                               </div>
-                              {lab.textValue && lab.value && (
-                                <div className="text-sm text-gray-600">{lab.textValue}</div>
-                              )}
+                              {(() => {
+                                // 🔧 FIX: Only show textValue if it's NOT JSON metadata
+                                if (!lab.textValue || !lab.value) return null;
+                                
+                                try {
+                                  // Try to parse as JSON - if it's our metadata, hide it
+                                  const parsed = JSON.parse(lab.textValue);
+                                  if (parsed.originalName || parsed.standardized || parsed.parameterFound) {
+                                    return null; // Hide JSON metadata from users
+                                  }
+                                } catch (e) {
+                                  // Not JSON, it's a regular text value, show it
+                                }
+                                
+                                return <div className="text-sm text-gray-600">{lab.textValue}</div>;
+                              })()}
                               {formatted?.wasConverted && formatted.conversionNote && (
                                 <div className="text-xs text-blue-600 mt-1 flex items-center gap-1">
                                   <span>🔧</span>

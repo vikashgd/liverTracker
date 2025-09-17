@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth-config';
 import { PrismaClient } from '../../../generated/prisma';
+import { DataExtractor } from '@/lib/medical-platform/processing/extractor';
+import { getParameterByName } from '@/lib/medical-platform/core/parameters';
 
 export async function GET(request: NextRequest) {
   console.log('🔍 Reports API: Starting request');
@@ -229,22 +231,151 @@ export async function POST(request: NextRequest) {
 
       console.log('✅ Reports API POST: Created report file:', reportFile.id);
 
-      // If extracted data exists, save metrics
-      if (extracted && extracted.metricsAll && Array.isArray(extracted.metricsAll)) {
-        const metrics = extracted.metricsAll.map((metric: any) => ({
-          reportId: reportFile.id, // Fixed: use reportId not reportFileId
-          name: metric.name || 'unknown',
-          value: metric.value ? parseFloat(metric.value.toString()) : null, // Fixed: convert to Float
-          textValue: metric.value?.toString() || '', // Store original text value
-          unit: metric.unit || null,
-          category: metric.category || 'general'
-        }));
+      // 🔧 FIX: Use Medical Platform DataExtractor for metric name standardization
+      if (extracted) {
+        try {
+          console.log('🧠 Reports API POST: Standardizing AI extraction metrics');
+          
+          // Process metrics through standardization pipeline
+          const standardizedMetrics = [];
+          
+          // Process both structured metrics and metricsAll array
+          const allExtractedMetrics = [];
+          
+          // Add structured metrics (higher priority)
+          if (extracted.metrics) {
+            for (const [metricName, metricData] of Object.entries(extracted.metrics)) {
+              if (metricData && typeof metricData === 'object') {
+                const { value, unit } = metricData as { value: number; unit?: string };
+                if (value !== null && value !== undefined && !isNaN(value)) {
+                  allExtractedMetrics.push({ name: metricName, value, unit, source: 'structured' });
+                }
+              }
+            }
+          }
 
-        if (metrics.length > 0) {
-          await prisma.extractedMetric.createMany({
-            data: metrics
-          });
-          console.log(`✅ Reports API POST: Created ${metrics.length} metrics`);
+          // Add metricsAll array (lower priority, avoid duplicates)
+          if (extracted.metricsAll && Array.isArray(extracted.metricsAll)) {
+            const structuredNames = new Set(allExtractedMetrics.map(m => m.name.toLowerCase()));
+            
+            for (const metric of extracted.metricsAll) {
+              if (metric && typeof metric === 'object') {
+                const { name, value, unit } = metric;
+                if (name && value !== null && value !== undefined && !isNaN(value)) {
+                  // Only add if not already in structured metrics
+                  if (!structuredNames.has(name.toLowerCase())) {
+                    allExtractedMetrics.push({ name, value, unit, source: 'array' });
+                  }
+                }
+              }
+            }
+          }
+
+          console.log(`📊 Processing ${allExtractedMetrics.length} extracted metrics for standardization`);
+
+          // Standardize each metric name and prepare for database
+          for (const metric of allExtractedMetrics) {
+            // 🎯 KEY FIX: Use medical platform parameter lookup for standardization
+            const parameter = getParameterByName(metric.name);
+            
+            if (parameter) {
+              // ✅ Found standardized parameter - use canonical name
+              const standardizedMetric = {
+                reportId: reportFile.id,
+                name: parameter.metric, // 🔧 This is the standardized canonical name!
+                value: metric.value ? parseFloat(metric.value.toString()) : null,
+                textValue: JSON.stringify({
+                  originalName: metric.name,
+                  source: metric.source,
+                  standardized: true,
+                  parameterFound: true
+                }),
+                unit: metric.unit || null,
+                category: parameter.category || 'general'
+              };
+              
+              standardizedMetrics.push(standardizedMetric);
+              console.log(`✅ Standardized: "${metric.name}" → "${parameter.metric}"`);
+              
+            } else {
+              // ⚠️ No standardized parameter found - save with original name but mark as non-standard
+              const nonStandardMetric = {
+                reportId: reportFile.id,
+                name: metric.name, // Keep original name
+                value: metric.value ? parseFloat(metric.value.toString()) : null,
+                textValue: JSON.stringify({
+                  originalName: metric.name,
+                  source: metric.source,
+                  standardized: false,
+                  parameterFound: false,
+                  warning: 'No standardized parameter definition found'
+                }),
+                unit: metric.unit || null,
+                category: 'other'
+              };
+              
+              standardizedMetrics.push(nonStandardMetric);
+              console.log(`⚠️ Non-standard metric kept as-is: "${metric.name}"`);
+            }
+          }
+
+          // Save all standardized metrics to database
+          if (standardizedMetrics.length > 0) {
+            await prisma.extractedMetric.createMany({
+              data: standardizedMetrics
+            });
+            
+            const standardizedCount = standardizedMetrics.filter(m => {
+              try {
+                const textValue = JSON.parse(m.textValue || '{}');
+                return textValue.standardized === true;
+              } catch {
+                return false;
+              }
+            }).length;
+            
+            console.log(`✅ Saved ${standardizedMetrics.length} metrics (${standardizedCount} standardized, ${standardizedMetrics.length - standardizedCount} non-standard)`);
+            
+            // Create timeline event
+            await prisma.timelineEvent.create({
+              data: {
+                userId: userId,
+                type: 'report_processed',
+                reportId: reportFile.id,
+                details: {
+                  totalMetrics: standardizedMetrics.length,
+                  standardizedMetrics: standardizedCount,
+                  nonStandardMetrics: standardizedMetrics.length - standardizedCount,
+                  processingMethod: 'medical_platform_standardization'
+                }
+              }
+            });
+          }
+          
+        } catch (standardizationError) {
+          console.error('❌ Metric standardization error:', standardizationError);
+          
+          // Emergency fallback: Save raw data with clear marking
+          console.log('🆘 Emergency fallback: Saving raw extracted data');
+          if (extracted.metricsAll && Array.isArray(extracted.metricsAll)) {
+            const emergencyMetrics = extracted.metricsAll.map((metric: any) => ({
+              reportId: reportFile.id,
+              name: `[EMERGENCY_RAW] ${metric.name || 'unknown'}`,
+              value: metric.value ? parseFloat(metric.value.toString()) : null,
+              textValue: JSON.stringify({
+                originalName: metric.name,
+                error: 'Standardization failed',
+                fallbackSave: true
+              }),
+              unit: metric.unit || null,
+              category: 'emergency'
+            }));
+
+            if (emergencyMetrics.length > 0) {
+              await prisma.extractedMetric.createMany({ data: emergencyMetrics });
+              console.log(`🆘 Created ${emergencyMetrics.length} emergency fallback metrics`);
+            }
+          }
         }
       }
 
