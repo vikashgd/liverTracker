@@ -730,9 +730,38 @@ function DashboardStyleChart({ data, color, range, unit, currentValue, isClient,
 export function ReportDetailClient({ report, userId }: { report: any; userId: string }) {
   const [selectedLabMetric, setSelectedLabMetric] = useState<any | null>(null);
 
-  // Parse report data from metrics
-  const labs = report.metrics?.filter((m: any) => m.category !== 'imaging') || [];
-  const imaging = report.metrics?.filter((m: any) => m.category === 'imaging') || [];
+  // Parse report data from metrics with deduplication
+  const allMetrics = report.metrics || [];
+  
+  // Deduplicate metrics by name (keep the most recent one)
+  const deduplicatedMetrics = allMetrics.reduce((acc: any[], metric: any) => {
+    const existingIndex = acc.findIndex(m => m.name === metric.name);
+    if (existingIndex >= 0) {
+      // Keep the one with the most recent createdAt or the one with a category
+      const existing = acc[existingIndex];
+      const current = metric;
+      
+      // Prefer the one with category, or the more recent one
+      if (current.category && !existing.category) {
+        acc[existingIndex] = current;
+      } else if (!current.category && existing.category) {
+        // Keep existing
+      } else {
+        // Both have category or both don't - use createdAt
+        const existingDate = new Date(existing.createdAt || 0);
+        const currentDate = new Date(current.createdAt || 0);
+        if (currentDate > existingDate) {
+          acc[existingIndex] = current;
+        }
+      }
+    } else {
+      acc.push(metric);
+    }
+    return acc;
+  }, []);
+
+  const labs = deduplicatedMetrics.filter((m: any) => m.category !== 'imaging');
+  const imaging = deduplicatedMetrics.filter((m: any) => m.category === 'imaging');
 
   // Format date helper
   const formatDate = (dateString: string) => {
@@ -808,7 +837,7 @@ export function ReportDetailClient({ report, userId }: { report: any; userId: st
 
                       return (
                         <div
-                          key={index}
+                          key={`${lab.name}-${lab.id || index}`}
                           onClick={() => handleLabClick(lab)}
                           className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-emerald-50 hover:border-emerald-200 border border-transparent transition-all cursor-pointer group"
                         >
