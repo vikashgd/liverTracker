@@ -3,6 +3,7 @@ import { HeroSection } from './hero-section';
 import { FeaturesSection } from './features-section';
 import { ComparisonSection } from './comparison-section';
 import { ComingSoonSection } from './coming-soon-section';
+import { FAQSection } from './faq-section';
 import { ContactSection } from './contact-section';
 import { LandingFooter } from './landing-footer';
 
@@ -16,6 +17,7 @@ export function LandingPage() {
         <FeaturesSection />
         <ComparisonSection />
         <ComingSoonSection />
+        <FAQSection />
         <ContactSection />
       </main>
       <LandingFooter />
