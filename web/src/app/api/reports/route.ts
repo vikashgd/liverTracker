@@ -4,6 +4,10 @@ import { authOptions } from '@/lib/auth-config';
 import { PrismaClient } from '../../../generated/prisma';
 import { DataExtractor } from '@/lib/medical-platform/processing/extractor';
 import { getParameterByName } from '@/lib/medical-platform/core/parameters';
+import { 
+  markFirstReportUploaded, 
+  markSecondReportUploaded 
+} from '@/lib/onboarding-utils';
 
 export async function GET(request: NextRequest) {
   console.log('🔍 Reports API: Starting request');
@@ -230,6 +234,37 @@ export async function POST(request: NextRequest) {
       });
 
       console.log('✅ Reports API POST: Created report file:', reportFile.id);
+
+      // 🎯 ONBOARDING INTEGRATION: Update onboarding progress based on report count
+      try {
+        const userReportCount = await prisma.reportFile.count({
+          where: { userId: userId }
+        });
+
+        console.log(`📊 User ${userId} now has ${userReportCount} reports`);
+
+        // Update onboarding flags based on report count
+        if (userReportCount === 1) {
+          console.log('🎉 First report uploaded - updating onboarding status');
+          const success = await markFirstReportUploaded(userId);
+          if (success) {
+            console.log('✅ Successfully marked first report uploaded');
+          } else {
+            console.error('❌ Failed to mark first report uploaded');
+          }
+        } else if (userReportCount === 2) {
+          console.log('🎉 Second report uploaded - updating onboarding status');
+          const success = await markSecondReportUploaded(userId);
+          if (success) {
+            console.log('✅ Successfully marked second report uploaded');
+          } else {
+            console.error('❌ Failed to mark second report uploaded');
+          }
+        }
+      } catch (onboardingError) {
+        console.error('❌ Error updating onboarding status:', onboardingError);
+        // Don't fail the entire request if onboarding update fails
+      }
 
       // 🔧 FIX: Use Medical Platform DataExtractor for metric name standardization
       if (extracted) {
