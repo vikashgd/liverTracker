@@ -278,9 +278,15 @@ export default function OnboardingPage() {
     return <OnboardingLoading />;
   }
 
-  // If user doesn't need onboarding, redirect to dashboard
+  // Handle redirect when user doesn't need onboarding
+  useEffect(() => {
+    if (state && !state.needsOnboarding) {
+      router.push('/dashboard');
+    }
+  }, [state, router]);
+
+  // If user doesn't need onboarding, show loading while redirecting
   if (state && !state.needsOnboarding) {
-    router.push('/dashboard');
     return <OnboardingLoading />;
   }
 
