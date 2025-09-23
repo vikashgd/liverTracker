@@ -174,6 +174,12 @@ export async function POST(request: NextRequest) {
     // Check if this completes the profile (has essential fields)
     const isProfileComplete = patientProfileData.dateOfBirth && patientProfileData.gender;
     
+    console.log('🔍 Profile completion check:', {
+      dateOfBirth: !!patientProfileData.dateOfBirth,
+      gender: !!patientProfileData.gender,
+      isComplete: isProfileComplete
+    });
+    
     console.log('💾 Saving profile for user:', user.email, 'Complete:', isProfileComplete);
     
     // Upsert profile (create or update) with explicit user ID
@@ -198,8 +204,12 @@ export async function POST(request: NextRequest) {
 
     // Mark onboarding profile step as completed if profile is complete
     if (isProfileComplete) {
-      await markProfileCompleted(userId);
-      console.log('🎯 Onboarding marked complete for:', user.email);
+      const onboardingSuccess = await markProfileCompleted(userId);
+      console.log('🎯 Onboarding profile completion result:', onboardingSuccess, 'for:', user.email);
+      
+      if (!onboardingSuccess) {
+        console.error('❌ Failed to mark profile completed for:', user.email);
+      }
     }
 
     return NextResponse.json({ 

@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     });
 
     try {
-      // Get user's current state and report count
+      // Get user's current state, report count, and profile data
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -51,6 +51,13 @@ export async function POST(request: NextRequest) {
               reportFiles: true,
             },
           },
+          patientProfile: {
+            select: {
+              dateOfBirth: true,
+              gender: true,
+              completedAt: true,
+            },
+          },
         },
       });
 
@@ -60,27 +67,35 @@ export async function POST(request: NextRequest) {
 
       const reportCount = user._count.reportFiles;
       
+      // Check if profile is actually complete (has essential fields)
+      const hasEssentialProfileData = user.patientProfile?.dateOfBirth && user.patientProfile?.gender;
+      const shouldProfileBeComplete = hasEssentialProfileData;
+      
       console.log(`📊 User ${userEmail} current state:`, {
         reportCount,
         profileCompleted: user.profileCompleted,
+        shouldProfileBeComplete,
+        hasEssentialProfileData,
+        profileData: user.patientProfile,
         firstReportUploaded: user.firstReportUploaded,
         secondReportUploaded: user.secondReportUploaded,
         onboardingStep: user.onboardingStep
       });
 
-      // Determine correct flags based on report count
+      // Determine correct flags based on actual data
       const shouldHaveFirst = reportCount >= 1;
       const shouldHaveSecond = reportCount >= 2;
       
       // Determine correct onboarding step
       let correctStep = 'profile';
-      if (user.profileCompleted && reportCount >= 1) {
+      if (shouldProfileBeComplete && reportCount >= 1) {
         correctStep = 'data-review';
-      } else if (user.profileCompleted) {
+      } else if (shouldProfileBeComplete) {
         correctStep = 'first-upload';
       }
 
       console.log(`🎯 Correct state should be:`, {
+        profileCompleted: shouldProfileBeComplete,
         firstReportUploaded: shouldHaveFirst,
         secondReportUploaded: shouldHaveSecond,
         onboardingStep: correctStep
@@ -88,6 +103,7 @@ export async function POST(request: NextRequest) {
 
       // Check if update is needed
       const needsUpdate = 
+        user.profileCompleted !== shouldProfileBeComplete ||
         user.firstReportUploaded !== shouldHaveFirst ||
         user.secondReportUploaded !== shouldHaveSecond ||
         user.onboardingStep !== correctStep;
@@ -98,6 +114,7 @@ export async function POST(request: NextRequest) {
         await prisma.user.update({
           where: { id: userId },
           data: {
+            profileCompleted: shouldProfileBeComplete,
             firstReportUploaded: shouldHaveFirst,
             secondReportUploaded: shouldHaveSecond,
             onboardingStep: correctStep,
@@ -110,11 +127,17 @@ export async function POST(request: NextRequest) {
           success: true,
           message: 'Onboarding state fixed successfully',
           updated: {
+            profileCompleted: shouldProfileBeComplete,
             firstReportUploaded: shouldHaveFirst,
             secondReportUploaded: shouldHaveSecond,
             onboardingStep: correctStep,
           },
           reportCount,
+          profileData: {
+            hasEssentialData: hasEssentialProfileData,
+            dateOfBirth: !!user.patientProfile?.dateOfBirth,
+            gender: !!user.patientProfile?.gender,
+          },
         });
         
       } else {
@@ -124,11 +147,17 @@ export async function POST(request: NextRequest) {
           success: true,
           message: 'Onboarding state is already correct',
           current: {
+            profileCompleted: user.profileCompleted,
             firstReportUploaded: user.firstReportUploaded,
             secondReportUploaded: user.secondReportUploaded,
             onboardingStep: user.onboardingStep,
           },
           reportCount,
+          profileData: {
+            hasEssentialData: hasEssentialProfileData,
+            dateOfBirth: !!user.patientProfile?.dateOfBirth,
+            gender: !!user.patientProfile?.gender,
+          },
         });
       }
 
