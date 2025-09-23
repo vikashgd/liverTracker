@@ -210,6 +210,11 @@ export async function POST(request: NextRequest) {
       if (!onboardingSuccess) {
         console.error('❌ Failed to mark profile completed for:', user.email);
       }
+      
+      // Try to auto-complete onboarding if all requirements are met
+      const { autoCompleteOnboardingIfReady } = await import('@/lib/onboarding-auto-completion');
+      const autoCompleted = await autoCompleteOnboardingIfReady(userId);
+      console.log('🎯 Auto-completion result:', autoCompleted, 'for:', user.email);
     }
 
     return NextResponse.json({ 

@@ -54,6 +54,10 @@ export async function getUserOnboardingStatus(userId: string): Promise<UserOnboa
  * Determine user's current onboarding state
  */
 export async function getUserOnboardingState(userId: string): Promise<OnboardingState> {
+  // First, try to auto-complete onboarding if requirements are met
+  const { autoCompleteOnboardingIfReady } = await import('./onboarding-auto-completion');
+  await autoCompleteOnboardingIfReady(userId);
+  
   const status = await getUserOnboardingStatus(userId);
   
   if (!status) {

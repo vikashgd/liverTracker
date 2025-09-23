@@ -261,6 +261,11 @@ export async function POST(request: NextRequest) {
             console.error('❌ Failed to mark second report uploaded');
           }
         }
+        
+        // Try to auto-complete onboarding if all requirements are met
+        const { autoCompleteOnboardingIfReady } = await import('@/lib/onboarding-auto-completion');
+        const autoCompleted = await autoCompleteOnboardingIfReady(userId);
+        console.log('🎯 Auto-completion result after report upload:', autoCompleted);
       } catch (onboardingError) {
         console.error('❌ Error updating onboarding status:', onboardingError);
         // Don't fail the entire request if onboarding update fails
