@@ -259,12 +259,18 @@ export default function OnboardingPage() {
     }
   }, [status, router]);
 
-  // Update current step based on onboarding state
+  // Update current step based on onboarding state and handle redirects
   useEffect(() => {
-    if (state && state.currentStep) {
-      setCurrentStep(state.currentStep);
+    if (state) {
+      if (!state.needsOnboarding) {
+        // User doesn't need onboarding, redirect to dashboard
+        router.push('/dashboard');
+      } else if (state.currentStep) {
+        // Update current step
+        setCurrentStep(state.currentStep);
+      }
     }
-  }, [state]);
+  }, [state, router]);
 
   // Handle loading states
   if (status === 'loading' || loading) {
@@ -277,13 +283,6 @@ export default function OnboardingPage() {
     router.push('/dashboard');
     return <OnboardingLoading />;
   }
-
-  // Handle redirect when user doesn't need onboarding
-  useEffect(() => {
-    if (state && !state.needsOnboarding) {
-      router.push('/dashboard');
-    }
-  }, [state, router]);
 
   // If user doesn't need onboarding, show loading while redirecting
   if (state && !state.needsOnboarding) {

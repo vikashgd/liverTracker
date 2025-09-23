@@ -149,7 +149,7 @@ export function EnhancedMedicalHeader() {
       type: 'dropdown',
       items: [
         { name: 'Debug Data', href: '/debug-data', icon: Search },
-        { name: 'Data Fix', href: '/admin/data-fix', icon: Wrench },
+        // { name: 'Data Fix', href: '/admin/data-fix', icon: Wrench },
       ]
     },
   ];
@@ -166,7 +166,7 @@ export function EnhancedMedicalHeader() {
     { name: 'Profile', href: '/profile', icon: User },
     { name: 'Settings', href: '/settings', icon: Settings },
     { name: 'Debug Data', href: '/debug-data', icon: Search },
-    { name: 'Data Fix', href: '/admin/data-fix', icon: Wrench },
+    // { name: 'Data Fix', href: '/admin/data-fix', icon: Wrench },
   ];
 
   const isCurrentPage = (href: string) => {
