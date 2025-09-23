@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
               reportFiles: true,
             },
           },
-          patientProfile: {
+          profile: {
             select: {
               dateOfBirth: true,
               gender: true,
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       const reportCount = user._count.reportFiles;
       
       // Check if profile is actually complete (has essential fields)
-      const hasEssentialProfileData = user.patientProfile?.dateOfBirth && user.patientProfile?.gender;
+      const hasEssentialProfileData = !!(user.profile?.dateOfBirth && user.profile?.gender);
       const shouldProfileBeComplete = hasEssentialProfileData;
       
       console.log(`📊 User ${userEmail} current state:`, {
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         profileCompleted: user.profileCompleted,
         shouldProfileBeComplete,
         hasEssentialProfileData,
-        profileData: user.patientProfile,
+        profileData: user.profile,
         firstReportUploaded: user.firstReportUploaded,
         secondReportUploaded: user.secondReportUploaded,
         onboardingStep: user.onboardingStep
@@ -135,8 +135,8 @@ export async function POST(request: NextRequest) {
           reportCount,
           profileData: {
             hasEssentialData: hasEssentialProfileData,
-            dateOfBirth: !!user.patientProfile?.dateOfBirth,
-            gender: !!user.patientProfile?.gender,
+            dateOfBirth: !!user.profile?.dateOfBirth,
+            gender: !!user.profile?.gender,
           },
         });
         
@@ -155,8 +155,8 @@ export async function POST(request: NextRequest) {
           reportCount,
           profileData: {
             hasEssentialData: hasEssentialProfileData,
-            dateOfBirth: !!user.patientProfile?.dateOfBirth,
-            gender: !!user.patientProfile?.gender,
+            dateOfBirth: !!user.profile?.dateOfBirth,
+            gender: !!user.profile?.gender,
           },
         });
       }
