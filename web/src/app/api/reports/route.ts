@@ -37,14 +37,7 @@ export async function GET(request: NextRequest) {
     console.log('✅ Reports API: Authenticated user:', userId);
 
     // CRITICAL: Use fresh Prisma client for EVERY request
-    const prisma = new PrismaClient({
-      log: ['error', 'warn'],
-      datasources: {
-        db: {
-          url: process.env.DATABASE_URL
-        }
-      }
-    });
+    const prisma = new PrismaClient();
 
     try {
       // CRITICAL: Double-check user exists and get ONLY their data
@@ -199,14 +192,7 @@ export async function POST(request: NextRequest) {
     }
 
     // CRITICAL: Use fresh Prisma client for EVERY request
-    const prisma = new PrismaClient({
-      log: ['error', 'warn'],
-      datasources: {
-        db: {
-          url: process.env.DATABASE_URL
-        }
-      }
-    });
+    const prisma = new PrismaClient();
 
     try {
       // CRITICAL: Double-check user exists
@@ -262,10 +248,7 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        // Try to auto-complete onboarding if all requirements are met
-        const { autoCompleteOnboardingIfReady } = await import('@/lib/onboarding-auto-completion');
-        const autoCompleted = await autoCompleteOnboardingIfReady(userId);
-        console.log('🎯 Auto-completion result after report upload:', autoCompleted);
+        // Auto-completion temporarily disabled to prevent auth issues
       } catch (onboardingError) {
         console.error('❌ Error updating onboarding status:', onboardingError);
         // Don't fail the entire request if onboarding update fails
