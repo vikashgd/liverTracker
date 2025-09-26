@@ -312,6 +312,32 @@ export function PatientProfileForm() {
         )}
       </AnimatePresence>
 
+      {/* Profile Completion Warning */}
+      {(!profile.gender || !profile.height || !profile.weight) && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 border border-amber-200 rounded-lg p-4"
+        >
+          <div className="flex items-start space-x-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-amber-800">Profile Incomplete</h3>
+              <p className="text-sm text-amber-700 mt-1">
+                Please fill in all required fields (marked with *) to complete your profile and access the dashboard.
+              </p>
+              <div className="mt-2 text-sm text-amber-700">
+                Missing: {[
+                  !profile.gender && 'Gender',
+                  !profile.height && 'Height', 
+                  !profile.weight && 'Weight'
+                ].filter(Boolean).join(', ')}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       <div className="space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -374,7 +400,9 @@ export function PatientProfileForm() {
                   </div>
 
                   <div>
-                    <Label htmlFor="gender" className="text-gray-700 font-medium">Gender</Label>
+                    <Label htmlFor="gender" className="text-gray-700 font-medium">
+                      Gender <span className="text-red-500">*</span>
+                    </Label>
                     <Select value={profile.gender || ''} onValueChange={(value) => updateProfile({ gender: value as any })}>
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select gender" />
@@ -388,27 +416,39 @@ export function PatientProfileForm() {
                   </div>
 
                   <div>
-                    <Label htmlFor="height" className="text-gray-700 font-medium">Height (cm)</Label>
+                    <Label htmlFor="height" className="text-gray-700 font-medium">
+                      Height (cm) <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="height"
                       type="number"
                       value={profile.height || ''}
                       onChange={(e) => updateProfile({ height: parseFloat(e.target.value) || undefined })}
-                      className="mt-1"
+                      className={`mt-1 ${!profile.height ? 'border-red-300 focus:border-red-500' : ''}`}
                       placeholder="170"
+                      required
                     />
+                    {!profile.height && (
+                      <p className="text-sm text-red-600 mt-1">Height is required to complete your profile</p>
+                    )}
                   </div>
 
                   <div>
-                    <Label htmlFor="weight" className="text-gray-700 font-medium">Weight (kg)</Label>
+                    <Label htmlFor="weight" className="text-gray-700 font-medium">
+                      Weight (kg) <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="weight"
                       type="number"
                       value={profile.weight || ''}
                       onChange={(e) => updateProfile({ weight: parseFloat(e.target.value) || undefined })}
-                      className="mt-1"
+                      className={`mt-1 ${!profile.weight ? 'border-red-300 focus:border-red-500' : ''}`}
                       placeholder="70"
+                      required
                     />
+                    {!profile.weight && (
+                      <p className="text-sm text-red-600 mt-1">Weight is required to complete your profile</p>
+                    )}
                     {calculateBMI() && (
                       <p className="text-sm text-gray-600 mt-1">BMI: {calculateBMI()}</p>
                     )}
