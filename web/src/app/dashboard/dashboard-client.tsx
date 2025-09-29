@@ -32,32 +32,19 @@ export default function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check onboarding status and redirect if needed
+  // Load dashboard data when session is available
   useEffect(() => {
-    if (status === 'loading' || onboardingLoading) return;
+    if (status === 'loading') return;
     
     if (status === 'unauthenticated') {
       setLoading(false);
       return;
     }
 
-    if (!session?.user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    // If user needs onboarding, redirect to onboarding page
-    if (onboardingState?.needsOnboarding) {
-      console.log('🚀 Redirecting to onboarding for new user');
-      router.push('/onboarding');
-      return;
-    }
-
-    // If onboarding is complete, load dashboard data
-    if (onboardingState && !onboardingState.needsOnboarding) {
+    if (session?.user?.id) {
       loadDashboardData();
     }
-  }, [status, onboardingState, onboardingLoading, session?.user?.id, router]);
+  }, [status, session?.user?.id]);
 
   // Load dashboard data when session is available
   async function loadDashboardData() {

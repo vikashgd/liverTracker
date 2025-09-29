@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useOnboarding } from '@/hooks/use-onboarding';
 import { OnboardingStep } from '@/types/onboarding';
+import { OnboardingPageGuard } from '@/components/atomic-onboarding-guard';
 
 // Loading component
 function OnboardingLoading() {
@@ -246,31 +247,18 @@ function OnboardingComplete() {
   );
 }
 
-export default function OnboardingPage() {
+function OnboardingPageContent() {
   const { data: session, status } = useSession();
   const { state, loading, error } = useOnboarding();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('profile');
 
-  // Handle authentication
+  // Update current step based on onboarding state
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
+    if (state && state.currentStep) {
+      setCurrentStep(state.currentStep);
     }
-  }, [status, router]);
-
-  // Update current step based on onboarding state and handle redirects
-  useEffect(() => {
-    if (state) {
-      if (!state.needsOnboarding) {
-        // User doesn't need onboarding, redirect to dashboard
-        router.push('/dashboard');
-      } else if (state.currentStep) {
-        // Update current step
-        setCurrentStep(state.currentStep);
-      }
-    }
-  }, [state, router]);
+  }, [state]);
 
   // Handle loading states
   if (status === 'loading' || loading) {
@@ -280,12 +268,6 @@ export default function OnboardingPage() {
   // Handle errors
   if (error) {
     console.error('Onboarding error:', error);
-    router.push('/dashboard');
-    return <OnboardingLoading />;
-  }
-
-  // If user doesn't need onboarding, show loading while redirecting
-  if (state && !state.needsOnboarding) {
     return <OnboardingLoading />;
   }
 
@@ -348,5 +330,13 @@ export default function OnboardingPage() {
       {/* Step content */}
       {renderStep()}
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <OnboardingPageGuard>
+      <OnboardingPageContent />
+    </OnboardingPageGuard>
   );
 }

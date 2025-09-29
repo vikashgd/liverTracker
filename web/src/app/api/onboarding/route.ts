@@ -1,119 +1,31 @@
 /**
- * API routes for onboarding management
+ * ULTRA SIMPLE ONBOARDING API - JUST TWO FLAGS
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-config';
-import { 
-  getUserOnboardingState,
-  updateOnboardingStep,
-  markProfileCompleted,
-  markFirstReportUploaded,
-  markSecondReportUploaded,
-  markOnboardingComplete,
-} from '@/lib/onboarding-utils';
-import { OnboardingStep } from '@/types/onboarding';
+import { canAccessDashboard } from '@/lib/dashboard-access';
 
-// GET /api/onboarding - Get user's onboarding state
+// GET /api/onboarding - Check if user can access dashboard
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const userId = session.user.id;
 
-    const state = await getUserOnboardingState(userId);
-    return NextResponse.json(state);
-  } catch (error) {
-    console.error('Error getting onboarding state:', error);
-    return NextResponse.json(
-      { error: 'Failed to get onboarding state' },
-      { status: 500 }
-    );
-  }
-}
-
-// POST /api/onboarding - Update onboarding state
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const userId = session.user.id;
-
-    const body = await request.json();
-    const { action, step } = body;
-
-    let success = false;
-
-    switch (action) {
-      case 'update-step':
-        if (!step || !isValidOnboardingStep(step)) {
-          return NextResponse.json(
-            { error: 'Invalid onboarding step' },
-            { status: 400 }
-          );
-        }
-        success = await updateOnboardingStep(userId, step);
-        break;
-
-      case 'mark-profile-completed':
-        success = await markProfileCompleted(userId);
-        break;
-
-      case 'mark-first-report':
-        success = await markFirstReportUploaded(userId);
-        break;
-
-      case 'mark-second-report':
-        success = await markSecondReportUploaded(userId);
-        break;
-
-      case 'complete-onboarding':
-        success = await markOnboardingComplete(userId);
-        break;
-
-      default:
-        return NextResponse.json(
-          { error: 'Invalid action' },
-          { status: 400 }
-        );
-    }
-
-    if (!success) {
-      return NextResponse.json(
-        { error: 'Failed to update onboarding state' },
-        { status: 500 }
-      );
-    }
-
-    // Return updated state
-    const updatedState = await getUserOnboardingState(userId);
-    return NextResponse.json({ 
-      success: true, 
-      state: updatedState 
+    const canAccess = await canAccessDashboard(session.user.id);
+    
+    return NextResponse.json({
+      canAccessDashboard: canAccess,
+      needsOnboarding: !canAccess
     });
-
   } catch (error) {
-    console.error('Error updating onboarding state:', error);
-    return NextResponse.json(
-      { error: 'Failed to update onboarding state' },
-      { status: 500 }
-    );
+    console.error('Error checking dashboard access:', error);
+    return NextResponse.json({
+      canAccessDashboard: false,
+      needsOnboarding: true
+    });
   }
-}
-
-// Helper function to validate onboarding step
-function isValidOnboardingStep(step: string): step is OnboardingStep {
-  const validSteps: OnboardingStep[] = [
-    'welcome',
-    'profile', 
-    'first-upload',
-    'data-review',
-    'complete'
-  ];
-  return validSteps.includes(step as OnboardingStep);
 }

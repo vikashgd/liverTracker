@@ -219,7 +219,7 @@ export function getNextOnboardingStep(state: OnboardingState): OnboardingStep | 
   if (!state.needsOnboarding) return null;
   
   const allSteps = ONBOARDING_STEPS.map(s => s.id);
-  const nextStepIndex = state.completedSteps.length;
+  const nextStepIndex = state.completedSteps?.length || 0;
   
   return nextStepIndex < allSteps.length ? allSteps[nextStepIndex] : null;
 }
@@ -231,7 +231,7 @@ export function calculateOnboardingProgress(state: OnboardingState): number {
   if (!state.needsOnboarding) return 100;
   
   const totalSteps = ONBOARDING_STEPS.length;
-  const completedSteps = state.completedSteps.length;
+  const completedSteps = state.completedSteps?.length || 0;
   
   return Math.round((completedSteps / totalSteps) * 100);
 }
