@@ -175,20 +175,11 @@ export function FastOnboardingDashboard({ children }: FastOnboardingDashboardPro
 
   // Handle onboarding state
   if (state) {
-    // New user - show welcome screen
-    if (state.isNewUser) {
+    // User needs onboarding - show welcome screen
+    if (state.needsOnboarding) {
       return (
         <FastWelcomeScreen 
           onGetStarted={() => router.push('/onboarding')} 
-        />
-      );
-    }
-
-    // User needs onboarding but has some progress
-    if (state.needsOnboarding && !state.isNewUser) {
-      return (
-        <FastIncompleteSetupScreen 
-          onContinue={() => router.push('/onboarding')} 
         />
       );
     }

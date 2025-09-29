@@ -15,13 +15,13 @@ interface OnboardingChecklistProps {
 }
 
 export function OnboardingChecklist({ className = '', showDismiss = true }: OnboardingChecklistProps) {
-  const { state, loading, completeOnboarding } = useOnboarding();
+  const { needsOnboarding, loading } = useOnboarding();
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
-  // Don't show if loading, no state, or user doesn't need onboarding
-  if (loading || !state || !state.needsOnboarding || isDismissed) {
+  // Don't show if loading, user doesn't need onboarding, or dismissed
+  if (loading || !needsOnboarding || isDismissed) {
     return null;
   }
 
@@ -30,7 +30,7 @@ export function OnboardingChecklist({ className = '', showDismiss = true }: Onbo
       id: 'profile',
       title: 'Complete Your Profile',
       description: 'Add basic health information for personalized insights',
-      completed: state.progress.hasProfile,
+      completed: false, // Simplified: if needsOnboarding is true, profile is incomplete
       action: () => router.push('/profile'),
       icon: '👤',
       color: 'blue'
@@ -39,19 +39,10 @@ export function OnboardingChecklist({ className = '', showDismiss = true }: Onbo
       id: 'first-report',
       title: 'Upload First Report',
       description: 'Upload your first lab report to start tracking',
-      completed: state.progress.reportCount >= 1,
+      completed: false, // Simplified: if needsOnboarding is true, reports are incomplete
       action: () => router.push('/upload-enhanced'),
       icon: '📄',
       color: 'green'
-    },
-    {
-      id: 'second-report',
-      title: 'Upload Second Report',
-      description: 'Add another report to unlock trend analysis',
-      completed: state.progress.reportCount >= 2,
-      action: () => router.push('/upload-enhanced'),
-      icon: '📊',
-      color: 'purple'
     }
   ];
 
@@ -59,10 +50,7 @@ export function OnboardingChecklist({ className = '', showDismiss = true }: Onbo
   const totalCount = checklistItems.length;
   const progressPercentage = (completedCount / totalCount) * 100;
 
-  const handleDismiss = async () => {
-    if (completedCount === totalCount) {
-      await completeOnboarding();
-    }
+  const handleDismiss = () => {
     setIsDismissed(true);
   };
 

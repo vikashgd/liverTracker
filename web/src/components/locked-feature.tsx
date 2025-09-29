@@ -22,12 +22,13 @@ export function LockedFeature({
   className = '',
   showProgress = true 
 }: LockedFeatureProps) {
-  const { state } = useOnboarding();
+  const { needsOnboarding } = useOnboarding();
   const router = useRouter();
 
   const feature = FEATURES.find(f => f.id === featureId);
-  const nextSteps = getFeatureNextSteps(featureId, state);
-  const progress = getFeatureProgress(feature!, state);
+  // Simplified: if user needs onboarding, show locked state
+  const nextSteps = needsOnboarding ? ['Complete your profile', 'Upload a report'] : [];
+  const progress = needsOnboarding ? 0 : 100;
 
   if (!feature) {
     return <div className="text-red-500">Feature not found: {featureId}</div>;

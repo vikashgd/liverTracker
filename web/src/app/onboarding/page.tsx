@@ -186,10 +186,8 @@ function FirstUploadStep({ onNext, onBack }: { onNext: () => void; onBack?: () =
 // Onboarding completion
 function OnboardingComplete() {
   const router = useRouter();
-  const { completeOnboarding } = useOnboarding();
 
-  const handleComplete = async () => {
-    await completeOnboarding();
+  const handleComplete = () => {
     router.push('/dashboard');
   };
 
@@ -249,16 +247,9 @@ function OnboardingComplete() {
 
 function OnboardingPageContent() {
   const { data: session, status } = useSession();
-  const { state, loading, error } = useOnboarding();
+  const { canAccessDashboard, needsOnboarding, loading, error } = useOnboarding();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('profile');
-
-  // Update current step based on onboarding state
-  useEffect(() => {
-    if (state && state.currentStep) {
-      setCurrentStep(state.currentStep);
-    }
-  }, [state]);
 
   // Handle loading states
   if (status === 'loading' || loading) {
@@ -268,6 +259,12 @@ function OnboardingPageContent() {
   // Handle errors
   if (error) {
     console.error('Onboarding error:', error);
+    return <OnboardingLoading />;
+  }
+
+  // If user can access dashboard, redirect them
+  if (canAccessDashboard && !needsOnboarding) {
+    router.push('/dashboard');
     return <OnboardingLoading />;
   }
 
@@ -290,11 +287,9 @@ function OnboardingPageContent() {
       {/* Progress indicator */}
       <div className="max-w-4xl mx-auto mb-8">
         <div className="flex items-center justify-center space-x-4">
-          <div className={`flex items-center ${currentStep === 'profile' ? 'text-blue-600' : state?.completedSteps.includes('profile') ? 'text-green-600' : 'text-gray-400'}`}>
+          <div className={`flex items-center ${currentStep === 'profile' ? 'text-blue-600' : 'text-gray-400'}`}>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-              currentStep === 'profile' ? 'bg-blue-600 text-white' : 
-              state?.completedSteps.includes('profile') ? 'bg-green-600 text-white' : 
-              'bg-gray-200 text-gray-600'
+              currentStep === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
             }`}>
               1
             </div>
@@ -303,11 +298,9 @@ function OnboardingPageContent() {
 
           <div className="w-12 h-0.5 bg-gray-300"></div>
 
-          <div className={`flex items-center ${currentStep === 'first-upload' ? 'text-blue-600' : state?.completedSteps.includes('first-upload') ? 'text-green-600' : 'text-gray-400'}`}>
+          <div className={`flex items-center ${currentStep === 'first-upload' ? 'text-blue-600' : 'text-gray-400'}`}>
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-              currentStep === 'first-upload' ? 'bg-blue-600 text-white' : 
-              state?.completedSteps.includes('first-upload') ? 'bg-green-600 text-white' : 
-              'bg-gray-200 text-gray-600'
+              currentStep === 'first-upload' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
             }`}>
               2
             </div>

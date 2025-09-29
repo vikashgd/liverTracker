@@ -131,34 +131,20 @@ function WelcomeScreen({ onGetStarted }: { onGetStarted: () => void }) {
 }
 
 // Empty state for users with some progress but incomplete setup
-function IncompleteSetupScreen({ state }: { state: OnboardingState }) {
+function IncompleteSetupScreen() {
   const router = useRouter();
+  const { needsOnboarding } = useOnboarding();
+  
+  // Create a simple state object for compatibility
+  const state = { needsOnboarding };
 
   const getNextAction = () => {
-    if (!state.progress.hasProfile) {
+    if (state.needsOnboarding) {
       return {
-        title: 'Complete Your Profile',
-        description: 'Add your basic health information to get personalized insights',
-        action: 'Complete Profile',
-        href: '/profile'
-      };
-    }
-    
-    if (state.progress.reportCount === 0) {
-      return {
-        title: 'Upload Your First Report',
-        description: 'Upload a lab report to start tracking your health metrics',
-        action: 'Upload Report',
-        href: '/upload-enhanced'
-      };
-    }
-    
-    if (state.progress.reportCount === 1) {
-      return {
-        title: 'Upload Another Report',
-        description: 'Upload a second report to unlock trend analysis and insights',
-        action: 'Upload Another Report',
-        href: '/upload-enhanced'
+        title: 'Complete Your Setup',
+        description: 'Finish your profile and upload a report to get started',
+        action: 'Continue Setup',
+        href: '/onboarding'
       };
     }
 
@@ -189,33 +175,33 @@ function IncompleteSetupScreen({ state }: { state: OnboardingState }) {
         {/* Progress Indicator */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium text-gray-700">Setup Progress</span>
+            <span className="text-sm font-medium text-gray-700">Setup Status</span>
             <span className="text-sm text-gray-500">
-              {state.completedSteps.length} of {state.completedSteps.length + 1} steps
+              Incomplete
             </span>
           </div>
           
           <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
             <div 
               className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(state.completedSteps.length / (state.completedSteps.length + 1)) * 100}%` }}
+              style={{ width: '50%' }}
             ></div>
           </div>
 
           <div className="grid grid-cols-3 gap-4 text-sm">
-            <div className={`flex items-center ${state.progress.hasProfile ? 'text-green-600' : 'text-gray-400'}`}>
+            <div className={`flex items-center ${!state.needsOnboarding ? 'text-green-600' : 'text-gray-400'}`}>
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               Profile
             </div>
-            <div className={`flex items-center ${state.progress.reportCount >= 1 ? 'text-green-600' : 'text-gray-400'}`}>
+            <div className={`flex items-center ${!state.needsOnboarding ? 'text-green-600' : 'text-gray-400'}`}>
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               First Report
             </div>
-            <div className={`flex items-center ${state.progress.reportCount >= 2 ? 'text-green-600' : 'text-gray-400'}`}>
+            <div className={`flex items-center ${!state.needsOnboarding ? 'text-green-600' : 'text-gray-400'}`}>
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
@@ -277,8 +263,8 @@ export function OnboardingAwareDashboard({ children }: OnboardingAwareDashboardP
 
   // Handle onboarding state
   if (state) {
-    // New user - show welcome screen
-    if (state.isNewUser && !showWelcome) {
+    // User needs onboarding - show welcome screen
+    if (state.needsOnboarding && !showWelcome) {
       return (
         <WelcomeScreen 
           onGetStarted={() => router.push('/onboarding')} 
@@ -286,9 +272,9 @@ export function OnboardingAwareDashboard({ children }: OnboardingAwareDashboardP
       );
     }
 
-    // User needs onboarding but has some progress
-    if (state.needsOnboarding && !state.isNewUser) {
-      return <IncompleteSetupScreen state={state} />;
+    // User needs onboarding
+    if (state.needsOnboarding) {
+      return <IncompleteSetupScreen />;
     }
   }
 

@@ -142,37 +142,18 @@ function CelebrationModal({ milestone, onClose }: MilestoneCelebrationProps) {
 }
 
 export function MilestoneCelebration() {
-  const { state } = useOnboarding();
+  const { canAccessDashboard } = useOnboarding();
   const [currentMilestone, setCurrentMilestone] = useState<string | null>(null);
   const [celebratedMilestones, setCelebratedMilestones] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!state || !state.progress) return;
-
-    // Check for new milestones to celebrate
-    const newMilestones: string[] = [];
-
-    if (state.progress.hasProfile && !celebratedMilestones.has('profile-complete')) {
-      newMilestones.push('profile-complete');
+    // Simplified: if user can access dashboard, they've completed onboarding
+    if (canAccessDashboard && !celebratedMilestones.has('onboarding-complete')) {
+      setCurrentMilestone('onboarding-complete');
+      setCelebratedMilestones(prev => new Set([...prev, 'onboarding-complete']));
+      return;
     }
-
-    if (state.progress.reportCount >= 1 && !celebratedMilestones.has('first-report')) {
-      newMilestones.push('first-report');
-    }
-
-    if (state.progress.reportCount >= 2 && !celebratedMilestones.has('trends-unlocked')) {
-      newMilestones.push('trends-unlocked');
-    }
-
-    if (state.progress.reportCount >= 3 && !celebratedMilestones.has('ai-insights')) {
-      newMilestones.push('ai-insights');
-    }
-
-    // Show the first new milestone
-    if (newMilestones.length > 0 && !currentMilestone) {
-      setCurrentMilestone(newMilestones[0]);
-    }
-  }, [state, celebratedMilestones, currentMilestone]);
+  }, [canAccessDashboard, celebratedMilestones, currentMilestone]);
 
   const handleClose = () => {
     if (currentMilestone) {
