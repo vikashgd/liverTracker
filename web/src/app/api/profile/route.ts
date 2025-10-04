@@ -4,21 +4,11 @@ import { authOptions } from '@/lib/auth-config';
 import { PrismaClient } from '@/generated/prisma';
 import { markProfileCompleted } from '@/lib/onboarding-utils';
 
-// Create a fresh Prisma client for each request to prevent connection sharing
-function createFreshPrismaClient() {
-  return new PrismaClient({
-    log: ['error'],
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
-  });
-}
+// ✅ Use shared Prisma instance from db.ts
+import { prisma } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
-  const prisma = createFreshPrismaClient();
-  
+  // ✅ Use shared Prisma instance
   try {
     console.log('🔍 Profile GET request received');
     
@@ -107,14 +97,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('❌ Profile GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
+  // ✅ No finally block needed - shared Prisma instance stays alive
 }
 
 export async function POST(request: NextRequest) {
-  const prisma = createFreshPrismaClient();
-  
+  // ✅ Use shared Prisma instance
   try {
     console.log('📝 Profile POST request received');
     
@@ -238,7 +226,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Profile POST error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
+  // ✅ No finally block needed - shared Prisma instance stays alive
 }

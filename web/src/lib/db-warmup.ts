@@ -6,7 +6,7 @@
 import { prisma } from '@/lib/db';
 
 let lastWarmup = 0;
-const WARMUP_INTERVAL = 4 * 60 * 1000; // 4 minutes (before 5-minute sleep)
+const WARMUP_INTERVAL = 30 * 60 * 1000; // 30 minutes (optimized for cost - was 4 minutes)
 
 /**
  * Wake up the database with retry logic
@@ -92,5 +92,5 @@ export function startDatabaseWarmup(): void {
     warmupIfNeeded();
   }, WARMUP_INTERVAL);
   
-  console.log('🔥 Database warmup started (every 4 minutes)');
+  console.log('🔥 Database warmup started (every 30 minutes - optimized for cost)');
 }

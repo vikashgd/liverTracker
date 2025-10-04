@@ -10,7 +10,7 @@ import { OfflineIndicator } from "@/components/offline-indicator";
 import { PerformanceMonitor } from "@/components/performance-monitor";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-config";
-import "@/lib/warmup"; // Auto-warmup database
+// ✅ Removed client-side warmup - server-side only now (cost optimization)
 
 const inter = Inter({
   variable: "--font-inter",

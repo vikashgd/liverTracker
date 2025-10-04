@@ -23,15 +23,8 @@ export async function POST(request: NextRequest) {
     
     console.log(`🔧 Fixing onboarding for user: ${userEmail} (${userId})`);
 
-    // Use fresh Prisma client
-    const prisma = new PrismaClient({
-      log: ['error', 'warn'],
-      datasources: {
-        db: {
-          url: process.env.DATABASE_URL
-        }
-      }
-    });
+    // ✅ Use shared Prisma instance
+    const { prisma } = await import('@/lib/db');
 
     try {
       // Get user's current state, report count, and profile data
@@ -161,9 +154,10 @@ export async function POST(request: NextRequest) {
         });
       }
 
-    } finally {
-      await prisma.$disconnect();
+    } catch (error) {
+      throw error;
     }
+    // ✅ No finally block needed - shared Prisma instance stays alive
 
   } catch (error) {
     console.error('❌ Fix Onboarding API: Error:', error);

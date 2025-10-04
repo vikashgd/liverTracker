@@ -35,15 +35,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Metric parameter required' }, { status: 400 });
     }
 
-    // CRITICAL: Fresh Prisma client
-    const prisma = new PrismaClient({
-      log: ['error'],
-      datasources: {
-        db: {
-          url: process.env.DATABASE_URL
-        }
-      }
-    });
+    // ✅ Use shared Prisma instance
+    const { prisma } = await import('@/lib/db');
 
     try {
       // CRITICAL: Verify user exists
@@ -164,9 +157,10 @@ export async function GET(request: NextRequest) {
         }
       });
 
-    } finally {
-      await prisma.$disconnect();
+    } catch (error) {
+      throw error;
     }
+    // ✅ No finally block needed - shared Prisma instance stays alive
 
   } catch (error) {
     console.error('❌ Chart Data API: Error:', error);

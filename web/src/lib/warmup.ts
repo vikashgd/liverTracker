@@ -46,9 +46,5 @@ if (typeof window === 'undefined') {
   startDatabaseWarmup();
 }
 
-// Client-side: One-time warmup
-if (typeof window !== 'undefined') {
-  setTimeout(() => {
-    warmupDatabase();
-  }, 100);
-}
+// ✅ Client-side warmup removed for cost optimization
+// Database wakes automatically on first query - no need for client warmup
